@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatCategoria } from "@/lib/utils";
 import type { ProdutoCreate, ProdutoUpdate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,7 +214,7 @@ export default function ProductFormPage() {
                     </SelectItem>
                     {categorias.map((c) => (
                       <SelectItem key={c} value={c}>
-                        {c}
+                        {formatCategoria(c)}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, Plus, Package } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatCategoria, formatNomeProduto } from "@/lib/utils";
 import type { Produto } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,7 +136,7 @@ export default function CatalogPage() {
             <SelectItem value="__all__">Todas as categorias</SelectItem>
             {categorias.map((c) => (
               <SelectItem key={c} value={c}>
-                {c}
+                {formatCategoria(c)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -168,10 +169,10 @@ export default function CatalogPage() {
             >
               <CardHeader className="pb-2">
                 <Badge variant="secondary" className="w-fit text-xs mb-1">
-                  {produto.categoria_produto}
+                  {formatCategoria(produto.categoria_produto)}
                 </Badge>
                 <CardTitle className="text-base leading-tight line-clamp-2">
-                  {produto.nome_produto}
+                  {formatNomeProduto(produto.nome_produto)}
                 </CardTitle>
               </CardHeader>
               <CardContent>

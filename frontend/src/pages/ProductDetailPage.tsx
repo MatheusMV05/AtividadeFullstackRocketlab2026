@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatCategoria, formatNomeProduto } from "@/lib/utils";
 import type {
   Produto,
   AvaliacaoStats,
@@ -147,10 +148,10 @@ export default function ProductDetailPage() {
       <div className="flex items-start justify-between mb-6 gap-4">
         <div className="flex-1">
           <Badge variant="secondary" className="mb-2">
-            {produto.categoria_produto}
+            {formatCategoria(produto.categoria_produto)}
           </Badge>
           <h1 className="text-2xl font-bold tracking-tight">
-            {produto.nome_produto}
+            {formatNomeProduto(produto.nome_produto)}
           </h1>
           <p className="text-xs text-muted-foreground mt-1 font-mono">
             ID: {produto.id_produto}
@@ -176,7 +177,7 @@ export default function ProductDetailPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Remover produto</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja remover <strong>{produto.nome_produto}</strong>?
+                  Tem certeza que deseja remover <strong>{formatNomeProduto(produto.nome_produto)}</strong>?
                   Esta ação não pode ser desfeita.
                 </AlertDialogDescription>
               </AlertDialogHeader>
