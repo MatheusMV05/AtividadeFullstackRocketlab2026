@@ -1,12 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Plus, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/produtos", icon: Package, label: "Catálogo" },
-  { to: "/produtos/novo", icon: Plus, label: "Novo Produto" },
 ];
 
 function isActiveLink(to: string, pathname: string): boolean {

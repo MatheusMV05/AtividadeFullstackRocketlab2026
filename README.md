@@ -124,8 +124,6 @@ O frontend estará disponível em `http://localhost:5173`.
 | `GET` | `/produtos/{id}/avaliacoes/tags` | Tags de sentimento extraídas dos textos de avaliação ⭐ |
 | `GET` | `/produtos/{id}/vendas/timeline` | Série temporal de vendas por dia (query param `days`) ⭐ |
 | `GET` | `/produtos/{id}/health-score` | Score de saúde do produto (0–100) ⭐ |
-| `GET` | `/alertas` | Lista de alertas ativos (queda de vendas, avaliações negativas) ⭐ |
-
 ---
 
 ## Extras implementados
@@ -137,22 +135,23 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | Recurso | Detalhes |
 |---|---|
 | **Health Score** (`GET /produtos/{id}/health-score`) | Pontuação de 0 a 100 calculada a partir de três componentes: média de avaliações (até 50 pts), volume de vendas nos últimos 30 dias (até 30 pts) e taxa de não-cancelamento (até 20 pts) |
-| **Tags de sentimento** (`GET /produtos/{id}/avaliacoes/tags`) | Extração de palavras-chave dos textos de avaliação agrupadas em ~15 categorias (ex.: "Entrega rápida", "Quebrou rápido") com classificação positivo/negativo/neutro |
-| **Timeline de vendas** (`GET /produtos/{id}/vendas/timeline?days=N`) | Série temporal diária de quantidade e receita para os últimos N dias (7 a 365), usando `func.date()` do SQLite |
-| **Alertas automáticos** (`GET /alertas`) | Dois tipos de alerta: produtos com ≥ 3 avaliações de 1 estrela nos últimos 7 dias, e produtos com queda de vendas > 50% em relação à semana anterior |
+| **Timeline de vendas** (`GET /produtos/{id}/vendas/timeline?days=N`) | Série temporal diária de quantidade e receita para os últimos N dias (1 a 3650), usando `func.date()` do SQLite — cobre todo o histórico desde 2018 |
+| **Dashboard de métricas** (`GET /dashboard/stats`) | Endpoint agregado com: totais de produtos, pedidos, clientes e receita; receita por mês (todos os anos); pedidos por status; top 10 categorias por receita; top 10 produtos por receita |
 
 ### Frontend
 
 | Recurso | Detalhes |
 |---|---|
 | **Tema Tailwind CSS v4** | Migração completa de Tailwind v3 para v4 com tema tweakcn (cores oklch, plugin `@tailwindcss/vite`, fontes Outfit/Merriweather/JetBrains Mono) |
-| **Dark mode** | Toggle na navbar com persistência via `localStorage`; sem flash na inicialização |
+| **Dark mode** | Toggle no menu lateral com persistência via `localStorage`; sem flash na inicialização |
+| **Menu lateral (Sidebar)** | Substitui a navbar superior; navegação entre Dashboard e Catálogo; toggle de tema na base |
+| **Dashboard analítico** | Página inicial com 4 KPI cards, gráfico de área com receita mensal histórica, dois gráficos de barras horizontais (pedidos por status + top categorias) e tabela dos top 10 produtos |
 | **Health Score Ring** | Anel SVG animado no cabeçalho da página de detalhes com cor semântica (verde ≥ 80, amarelo ≥ 50, vermelho < 50) |
-| **Feed de alertas** | Painel colapsável no topo do catálogo exibindo alertas ativos com ícone, severidade e link direto para o produto |
-| **Tags de sentimento** | Pílulas coloridas na página de detalhes (verde = positivo, vermelho = negativo, cinza = neutro) geradas a partir das avaliações |
+| **Busca ao vivo** | A barra de pesquisa do catálogo dispara automaticamente com debounce de 400 ms, letra por letra, sem necessidade de confirmar |
 | **Simulador de preço** | Slider no formulário de edição que projeta quantas unidades/mês são necessárias para manter a receita atual caso o preço médio mude |
-| **Gráfico de timeline** | Aba "Desempenho" na página de detalhes com `AreaChart` (recharts) para visualizar receita ao longo do tempo; botões para alternar entre 7, 30, 90 e 365 dias |
+| **Gráfico de timeline histórico** | Aba "Desempenho" na página de detalhes com `AreaChart` (recharts); botões de período: 30 dias, 6 meses, 1 ano, 2 anos, 5 anos e Tudo (padrão: 1 ano) |
 | **Visualização em tabela** | Toggle grade/tabela no catálogo usando `@tanstack/react-table`; a coluna de categoria suporta edição inline diretamente na célula (clique → `<select>` → Enter/blur salva, Escape cancela) |
+| **Categoria por dropdown** | No formulário de produto a categoria é selecionada exclusivamente pelo dropdown de categorias existentes, sem campo de texto livre |
 | **Cores por categoria** | Badges coloridos para cada grupo de categoria (eletrônicos = azul, games = violeta, moda = rosa, casa = âmbar, etc.) |
 | **Formatação de nomes e categorias** | `formatNomeProduto` remove artefatos de escape CSV; `formatCategoria` converte slugs snake_case para rótulos legíveis em português |
 | **Animações de layout** | Cards do catálogo animam com `framer-motion` (`layout` prop) ao filtrar; entrada das seções da página de detalhes é escalonada (`staggerChildren: 0.08s`) |
