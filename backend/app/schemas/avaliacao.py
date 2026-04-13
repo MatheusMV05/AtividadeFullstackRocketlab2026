@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -19,3 +19,9 @@ class AvaliacaoStats(BaseModel):
     media_avaliacao: Optional[float] = None
     total_avaliacoes: int
     distribuicao: dict[str, int]
+
+
+class SentimentTag(BaseModel):
+    tag: str
+    count: int
+    sentiment: Literal["positive", "negative", "neutral"]

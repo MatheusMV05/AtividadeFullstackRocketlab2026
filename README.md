@@ -4,7 +4,7 @@ Aplicação fullstack para gerenciamento de produtos, vendas e avaliações de u
 
 ## Stack
 
-- **Frontend:** Vite + React + TypeScript + shadcn/ui (Tailwind CSS)
+- **Frontend:** Vite + React + TypeScript + shadcn/ui (Tailwind CSS v4)
 - **Backend:** FastAPI (Python)
 - **Banco de dados:** SQLite (via SQLAlchemy + Alembic)
 
@@ -121,6 +121,45 @@ O frontend estará disponível em `http://localhost:5173`.
 | `GET` | `/produtos/{id}/avaliacoes/stats` | Estatísticas de avaliações |
 | `GET` | `/produtos/{id}/vendas` | Lista vendas do produto |
 | `GET` | `/produtos/{id}/vendas/stats` | Estatísticas de vendas |
+| `GET` | `/produtos/{id}/avaliacoes/tags` | Tags de sentimento extraídas dos textos de avaliação ⭐ |
+| `GET` | `/produtos/{id}/vendas/timeline` | Série temporal de vendas por dia (query param `days`) ⭐ |
+| `GET` | `/produtos/{id}/health-score` | Score de saúde do produto (0–100) ⭐ |
+| `GET` | `/alertas` | Lista de alertas ativos (queda de vendas, avaliações negativas) ⭐ |
+
+---
+
+## Extras implementados
+
+Funcionalidades adicionadas além dos requisitos originais da atividade.
+
+### Backend
+
+| Recurso | Detalhes |
+|---|---|
+| **Health Score** (`GET /produtos/{id}/health-score`) | Pontuação de 0 a 100 calculada a partir de três componentes: média de avaliações (até 50 pts), volume de vendas nos últimos 30 dias (até 30 pts) e taxa de não-cancelamento (até 20 pts) |
+| **Tags de sentimento** (`GET /produtos/{id}/avaliacoes/tags`) | Extração de palavras-chave dos textos de avaliação agrupadas em ~15 categorias (ex.: "Entrega rápida", "Quebrou rápido") com classificação positivo/negativo/neutro |
+| **Timeline de vendas** (`GET /produtos/{id}/vendas/timeline?days=N`) | Série temporal diária de quantidade e receita para os últimos N dias (7 a 365), usando `func.date()` do SQLite |
+| **Alertas automáticos** (`GET /alertas`) | Dois tipos de alerta: produtos com ≥ 3 avaliações de 1 estrela nos últimos 7 dias, e produtos com queda de vendas > 50% em relação à semana anterior |
+
+### Frontend
+
+| Recurso | Detalhes |
+|---|---|
+| **Tema Tailwind CSS v4** | Migração completa de Tailwind v3 para v4 com tema tweakcn (cores oklch, plugin `@tailwindcss/vite`, fontes Outfit/Merriweather/JetBrains Mono) |
+| **Dark mode** | Toggle na navbar com persistência via `localStorage`; sem flash na inicialização |
+| **Health Score Ring** | Anel SVG animado no cabeçalho da página de detalhes com cor semântica (verde ≥ 80, amarelo ≥ 50, vermelho < 50) |
+| **Feed de alertas** | Painel colapsável no topo do catálogo exibindo alertas ativos com ícone, severidade e link direto para o produto |
+| **Tags de sentimento** | Pílulas coloridas na página de detalhes (verde = positivo, vermelho = negativo, cinza = neutro) geradas a partir das avaliações |
+| **Simulador de preço** | Slider no formulário de edição que projeta quantas unidades/mês são necessárias para manter a receita atual caso o preço médio mude |
+| **Gráfico de timeline** | Aba "Desempenho" na página de detalhes com `AreaChart` (recharts) para visualizar receita ao longo do tempo; botões para alternar entre 7, 30, 90 e 365 dias |
+| **Visualização em tabela** | Toggle grade/tabela no catálogo usando `@tanstack/react-table`; a coluna de categoria suporta edição inline diretamente na célula (clique → `<select>` → Enter/blur salva, Escape cancela) |
+| **Cores por categoria** | Badges coloridos para cada grupo de categoria (eletrônicos = azul, games = violeta, moda = rosa, casa = âmbar, etc.) |
+| **Formatação de nomes e categorias** | `formatNomeProduto` remove artefatos de escape CSV; `formatCategoria` converte slugs snake_case para rótulos legíveis em português |
+| **Animações de layout** | Cards do catálogo animam com `framer-motion` (`layout` prop) ao filtrar; entrada das seções da página de detalhes é escalonada (`staggerChildren: 0.08s`) |
+| **Transição compartilhada** | O título do produto usa `layoutId` do Framer Motion para uma transição suave do card do catálogo até o cabeçalho da página de detalhes |
+| **Botão de salvar animado** | Três estados com `AnimatePresence`: ícone de salvar → spinner giratório → ícone de check (verde), seguido de redirecionamento automático |
+| **Empty states acionáveis** | Telas vazias de avaliações e vendas incluem botões de ação contextuais (ex.: "Editar Produto", "Ver Catálogo") |
+| **Numerais tabulares** | Classe `tabular-nums` em todos os valores numéricos (KPIs, tabelas de vendas) para alinhamento visual consistente |
 
 ---
 

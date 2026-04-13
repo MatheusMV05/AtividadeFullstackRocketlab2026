@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.produto import Produto
 from app.models.item_pedido import ItemPedido
 from app.models.pedido import Pedido
-from app.schemas.venda import VendaResponse, VendaStats
+from app.models.produto import Produto
+from app.schemas.venda import VendaResponse, VendaStats, VendaTimelineEntry
 
 router = APIRouter(prefix="/produtos/{id_produto}/vendas", tags=["Vendas"])
 
@@ -72,3 +74,38 @@ def stats_vendas(id_produto: str, db: Session = Depends(get_db)):
         ticket_medio=round(ticket_medio, 2) if ticket_medio else None,
         frete_medio=round(frete_medio, 2) if frete_medio else None,
     )
+
+
+@router.get("/timeline", response_model=list[VendaTimelineEntry])
+def timeline_vendas(
+    id_produto: str,
+    days: int = Query(30, ge=1, le=3650),
+    db: Session = Depends(get_db),
+):
+    _verificar_produto(id_produto, db)
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    rows = (
+        db.query(
+            func.date(Pedido.pedido_compra_timestamp).label("data"),
+            func.count(ItemPedido.id_pedido).label("quantidade"),
+            func.sum(ItemPedido.preco_BRL).label("receita"),
+        )
+        .join(Pedido, ItemPedido.id_pedido == Pedido.id_pedido)
+        .filter(
+            ItemPedido.id_produto == id_produto,
+            Pedido.pedido_compra_timestamp >= cutoff,
+        )
+        .group_by(func.date(Pedido.pedido_compra_timestamp))
+        .order_by(func.date(Pedido.pedido_compra_timestamp))
+        .all()
+    )
+
+    return [
+        VendaTimelineEntry(
+            data=str(row.data),
+            quantidade=row.quantidade,
+            receita=round(row.receita or 0, 2),
+        )
+        for row in rows
+    ]

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Check, Save } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import { formatCategoria } from "@/lib/utils";
-import type { ProdutoCreate, ProdutoUpdate } from "@/types";
+import type { ProdutoCreate, ProdutoUpdate, VendaStats } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,52 @@ function parseOptionalFloat(value: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+function formatCurrency(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function PriceSimulator({ vendaStats }: { vendaStats: VendaStats }) {
+  const [multiplier, setMultiplier] = useState(100);
+  const currentAvg = vendaStats.ticket_medio!;
+  const newPrice = (currentAvg * multiplier) / 100;
+  const unitsNeeded = newPrice > 0 ? Math.ceil(vendaStats.receita_total / newPrice) : 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">Preço simulado</span>
+        <span className="font-semibold tabular-nums">
+          {formatCurrency(newPrice)}
+          <span className="text-xs text-muted-foreground ml-1">({multiplier}% do atual)</span>
+        </span>
+      </div>
+      <input
+        type="range"
+        min={50}
+        max={200}
+        step={5}
+        value={multiplier}
+        onChange={(e) => setMultiplier(Number(e.target.value))}
+        className="w-full accent-primary"
+      />
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>50%</span>
+        <span>100%</span>
+        <span>200%</span>
+      </div>
+      <p className="text-sm text-center bg-muted rounded-md py-2 px-4">
+        Para manter a receita atual de{" "}
+        <strong className="tabular-nums">
+          {formatCurrency(vendaStats.receita_total)}
+        </strong>
+        , você precisará vender{" "}
+        <strong className="tabular-nums">{unitsNeeded}</strong>{" "}
+        unidade{unitsNeeded !== 1 ? "s" : ""}/mês
+      </p>
+    </div>
+  );
+}
+
 export default function ProductFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
@@ -49,7 +96,9 @@ export default function ProductFormPage() {
   const [categorias, setCategorias] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success">("idle");
   const [errors, setErrors] = useState<Partial<FormValues>>({});
+  const [vendaStats, setVendaStats] = useState<VendaStats | null>(null);
 
   useEffect(() => {
     api.getCategorias().then(setCategorias);
@@ -65,8 +114,7 @@ export default function ProductFormPage() {
           nome_produto: p.nome_produto,
           categoria_produto: p.categoria_produto,
           peso_produto_gramas: p.peso_produto_gramas?.toString() ?? "",
-          comprimento_centimetros:
-            p.comprimento_centimetros?.toString() ?? "",
+          comprimento_centimetros: p.comprimento_centimetros?.toString() ?? "",
           altura_centimetros: p.altura_centimetros?.toString() ?? "",
           largura_centimetros: p.largura_centimetros?.toString() ?? "",
         });
@@ -76,14 +124,14 @@ export default function ProductFormPage() {
         navigate("/");
       })
       .finally(() => setLoading(false));
+
+    api.getVendaStats(id).then(setVendaStats).catch(() => {});
   }, [id, isEditing, navigate]);
 
   function validate(): boolean {
     const newErrors: Partial<FormValues> = {};
-    if (!form.nome_produto.trim())
-      newErrors.nome_produto = "Nome é obrigatório";
-    if (!form.categoria_produto.trim())
-      newErrors.categoria_produto = "Categoria é obrigatória";
+    if (!form.nome_produto.trim()) newErrors.nome_produto = "Nome é obrigatório";
+    if (!form.categoria_produto.trim()) newErrors.categoria_produto = "Categoria é obrigatória";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -92,6 +140,7 @@ export default function ProductFormPage() {
     e.preventDefault();
     if (!validate()) return;
 
+    setSaveStatus("saving");
     setSubmitting(true);
     try {
       if (isEditing && id) {
@@ -99,31 +148,30 @@ export default function ProductFormPage() {
           nome_produto: form.nome_produto,
           categoria_produto: form.categoria_produto,
           peso_produto_gramas: parseOptionalFloat(form.peso_produto_gramas),
-          comprimento_centimetros: parseOptionalFloat(
-            form.comprimento_centimetros
-          ),
+          comprimento_centimetros: parseOptionalFloat(form.comprimento_centimetros),
           altura_centimetros: parseOptionalFloat(form.altura_centimetros),
           largura_centimetros: parseOptionalFloat(form.largura_centimetros),
         };
         await api.atualizarProduto(id, data);
         toast({ title: "Produto atualizado com sucesso" });
-        navigate(`/produtos/${id}`);
+        setSaveStatus("success");
+        setTimeout(() => navigate(`/produtos/${id}`), 800);
       } else {
         const data: ProdutoCreate = {
           nome_produto: form.nome_produto,
           categoria_produto: form.categoria_produto,
           peso_produto_gramas: parseOptionalFloat(form.peso_produto_gramas),
-          comprimento_centimetros: parseOptionalFloat(
-            form.comprimento_centimetros
-          ),
+          comprimento_centimetros: parseOptionalFloat(form.comprimento_centimetros),
           altura_centimetros: parseOptionalFloat(form.altura_centimetros),
           largura_centimetros: parseOptionalFloat(form.largura_centimetros),
         };
         const criado = await api.criarProduto(data);
         toast({ title: "Produto criado com sucesso" });
-        navigate(`/produtos/${criado.id_produto}`);
+        setSaveStatus("success");
+        setTimeout(() => navigate(`/produtos/${criado.id_produto}`), 800);
       }
     } catch (err) {
+      setSaveStatus("idle");
       toast({
         title: isEditing ? "Erro ao atualizar produto" : "Erro ao criar produto",
         description: err instanceof Error ? err.message : undefined,
@@ -152,12 +200,7 @@ export default function ProductFormPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-6 -ml-2"
-        onClick={() => navigate(-1)}
-      >
+      <Button variant="ghost" size="sm" className="mb-6 -ml-2" onClick={() => navigate(-1)}>
         <ArrowLeft className="h-4 w-4" />
         Voltar
       </Button>
@@ -192,50 +235,23 @@ export default function ProductFormPage() {
               <Label htmlFor="categoria">
                 Categoria <span className="text-destructive">*</span>
               </Label>
-              <div className="flex gap-2">
-                <Select
-                  value={
-                    categorias.includes(form.categoria_produto)
-                      ? form.categoria_produto
-                      : "__custom__"
-                  }
-                  onValueChange={(v) => {
-                    if (v !== "__custom__") {
-                      handleChange("categoria_produto", v);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__custom__">
-                      — Digitar nova —
+              <Select
+                value={form.categoria_produto || ""}
+                onValueChange={(v) => handleChange("categoria_produto", v)}
+              >
+                <SelectTrigger className={errors.categoria_produto ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Selecionar categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorias.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {formatCategoria(c)}
                     </SelectItem>
-                    {categorias.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {formatCategoria(c)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="ou digitar..."
-                  value={form.categoria_produto}
-                  onChange={(e) =>
-                    handleChange("categoria_produto", e.target.value)
-                  }
-                  className={
-                    errors.categoria_produto
-                      ? "border-destructive flex-1"
-                      : "flex-1"
-                  }
-                />
-              </div>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.categoria_produto && (
-                <p className="text-xs text-destructive">
-                  {errors.categoria_produto}
-                </p>
+                <p className="text-xs text-destructive">{errors.categoria_produto}</p>
               )}
             </div>
           </CardContent>
@@ -256,9 +272,7 @@ export default function ProductFormPage() {
                   step="any"
                   placeholder="Ex: 500"
                   value={form.peso_produto_gramas}
-                  onChange={(e) =>
-                    handleChange("peso_produto_gramas", e.target.value)
-                  }
+                  onChange={(e) => handleChange("peso_produto_gramas", e.target.value)}
                 />
               </div>
 
@@ -271,9 +285,7 @@ export default function ProductFormPage() {
                   step="any"
                   placeholder="Ex: 30"
                   value={form.comprimento_centimetros}
-                  onChange={(e) =>
-                    handleChange("comprimento_centimetros", e.target.value)
-                  }
+                  onChange={(e) => handleChange("comprimento_centimetros", e.target.value)}
                 />
               </div>
 
@@ -286,9 +298,7 @@ export default function ProductFormPage() {
                   step="any"
                   placeholder="Ex: 20"
                   value={form.largura_centimetros}
-                  onChange={(e) =>
-                    handleChange("largura_centimetros", e.target.value)
-                  }
+                  onChange={(e) => handleChange("largura_centimetros", e.target.value)}
                 />
               </div>
 
@@ -301,30 +311,90 @@ export default function ProductFormPage() {
                   step="any"
                   placeholder="Ex: 5"
                   value={form.altura_centimetros}
-                  onChange={(e) =>
-                    handleChange("altura_centimetros", e.target.value)
-                  }
+                  onChange={(e) => handleChange("altura_centimetros", e.target.value)}
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Simulador de Preço */}
+        {isEditing && vendaStats?.ticket_medio != null && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base">Simulador de Preço</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PriceSimulator vendaStats={vendaStats} />
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex gap-3 mt-6 justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(-1)}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={submitting}>
-            <Save className="h-4 w-4" />
-            {submitting
-              ? "Salvando..."
-              : isEditing
-              ? "Salvar Alterações"
-              : "Criar Produto"}
+          <Button
+            type="submit"
+            disabled={submitting || saveStatus === "success"}
+            className={saveStatus === "success" ? "bg-green-600 hover:bg-green-600" : ""}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {saveStatus === "saving" && (
+                <motion.span
+                  key="saving"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    />
+                  </svg>
+                  Salvando...
+                </motion.span>
+              )}
+              {saveStatus === "success" && (
+                <motion.span
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2"
+                >
+                  <Check className="h-4 w-4" />
+                  Salvo
+                </motion.span>
+              )}
+              {saveStatus === "idle" && (
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  {isEditing ? "Salvar Alterações" : "Criar Produto"}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Button>
         </div>
       </form>

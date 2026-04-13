@@ -1,12 +1,15 @@
 import type {
-  Produto,
-  ProdutoListResponse,
-  ProdutoCreate,
-  ProdutoUpdate,
   AvaliacaoResponse,
   AvaliacaoStats,
+  DashboardStats,
+  HealthScore,
+  Produto,
+  ProdutoCreate,
+  ProdutoListResponse,
+  ProdutoUpdate,
   VendaResponse,
   VendaStats,
+  VendaTimelineEntry,
 } from "@/types";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -85,5 +88,17 @@ export const api = {
 
   getVendaStats(idProduto: string): Promise<VendaStats> {
     return request(`/produtos/${idProduto}/vendas/stats`);
+  },
+
+  getVendaTimeline(idProduto: string, days: number): Promise<VendaTimelineEntry[]> {
+    return request(`/produtos/${idProduto}/vendas/timeline?days=${days}`);
+  },
+
+  getHealthScore(idProduto: string): Promise<HealthScore> {
+    return request(`/produtos/${idProduto}/health-score`);
+  },
+
+  getDashboardStats(): Promise<DashboardStats> {
+    return request("/dashboard/stats");
   },
 };

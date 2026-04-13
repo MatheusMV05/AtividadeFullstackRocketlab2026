@@ -68,3 +68,52 @@ export interface VendaStats {
   ticket_medio: number | null;
   frete_medio: number | null;
 }
+
+export interface HealthScore {
+  score: number;
+  rating_component: number;
+  sales_30d_component: number;
+  quality_component: number;
+}
+
+export interface VendaTimelineEntry {
+  data: string;
+  quantidade: number;
+  receita: number;
+}
+
+export interface ReceitaMensalItem {
+  mes: string;
+  receita: number;
+  pedidos: number;
+}
+
+export interface StatusItem {
+  status: string;
+  total: number;
+}
+
+export interface CategoriaStatItem {
+  categoria: string;
+  receita: number;
+  total_vendas: number;
+}
+
+export interface ProdutoTopItem {
+  id_produto: string;
+  nome_produto: string;
+  total_vendas: number;
+  receita: number;
+}
+
+export interface DashboardStats {
+  total_produtos: number;
+  total_pedidos: number;
+  total_consumidores: number;
+  receita_total: number;
+  ticket_medio: number | null;
+  receita_por_mes: ReceitaMensalItem[];
+  pedidos_por_status: StatusItem[];
+  top_categorias: CategoriaStatItem[];
+  top_produtos: ProdutoTopItem[];
+}

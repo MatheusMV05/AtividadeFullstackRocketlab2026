@@ -22,3 +22,9 @@ class VendaStats(BaseModel):
     receita_total: float
     ticket_medio: Optional[float] = None
     frete_medio: Optional[float] = None
+
+
+class VendaTimelineEntry(BaseModel):
+    data: str
+    quantidade: int
+    receita: float
