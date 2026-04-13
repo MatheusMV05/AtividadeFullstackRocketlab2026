@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import String, Float, DateTime, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -22,3 +22,9 @@ class Pedido(Base):
     tempo_entrega_estimado_dias: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     diferenca_entrega_dias: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     entrega_no_prazo: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+
+    consumidor: Mapped["Consumidor"] = relationship("Consumidor", back_populates="pedidos")
+    itens: Mapped[List["ItemPedido"]] = relationship("ItemPedido", back_populates="pedido")
+    avaliacao: Mapped[Optional["AvaliacaoPedido"]] = relationship(
+        "AvaliacaoPedido", back_populates="pedido", uselist=False
+    )

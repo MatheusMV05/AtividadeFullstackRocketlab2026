@@ -1,3 +1,5 @@
+from typing import List
+
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,3 +14,7 @@ class Vendedor(Base):
     prefixo_cep: Mapped[str] = mapped_column(String(10))
     cidade: Mapped[str] = mapped_column(String(100))
     estado: Mapped[str] = mapped_column(String(2))
+
+    itens_pedidos: Mapped[List["ItemPedido"]] = relationship(
+        "ItemPedido", back_populates="vendedor"
+    )
