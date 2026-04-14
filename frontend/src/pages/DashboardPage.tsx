@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ImageOff,
@@ -69,15 +70,122 @@ const MESES_PT = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
+const MESES_CURTO = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+];
 
-function mesAnterior(ano: number, mes: number) {
-  return mes === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: mes - 1 };
-}
-function mesPosterior(ano: number, mes: number) {
-  return mes === 12 ? { ano: ano + 1, mes: 1 } : { ano, mes: mes + 1 };
-}
 function mesParaStr(ano: number, mes: number) {
   return `${ano}-${String(mes).padStart(2, "0")}`;
+}
+
+interface MonthPickerProps {
+  value: { ano: number; mes: number };
+  onChange: (v: { ano: number; mes: number }) => void;
+  mesesComDados: Set<string>;
+  anoMinimo: number;
+}
+
+function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerProps) {
+  const hoje = new Date();
+  const anoMaximo = hoje.getFullYear();
+  const mesMaximoStr = mesParaStr(anoMaximo, hoje.getMonth() + 1);
+
+  const [aberto, setAberto] = useState(false);
+  const [anoVisualizando, setAnoVisualizando] = useState(value.ano);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    if (!aberto) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [aberto]);
+
+  // Sincroniza o ano visualizado quando o valor externo muda (prev/next)
+  useEffect(() => {
+    setAnoVisualizando(value.ano);
+  }, [value.ano]);
+
+  function selecionar(mes: number) {
+    onChange({ ano: anoVisualizando, mes });
+    setAberto(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => setAberto((o) => !o)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm font-medium hover:bg-muted transition-colors"
+      >
+        {MESES_PT[value.mes - 1]} {value.ano}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${aberto ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Dropdown */}
+      {aberto && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 rounded-lg border bg-popover shadow-lg p-3 w-56">
+          {/* Navegação de ano */}
+          <div className="flex items-center justify-between mb-3">
+            <button
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              disabled={anoVisualizando <= anoMinimo}
+              onClick={() => setAnoVisualizando((a) => a - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold tabular-nums">{anoVisualizando}</span>
+            <button
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              disabled={anoVisualizando >= anoMaximo}
+              onClick={() => setAnoVisualizando((a) => a + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Grade de meses */}
+          <div className="grid grid-cols-4 gap-1">
+            {MESES_CURTO.map((nome, idx) => {
+              const m = idx + 1;
+              const str = mesParaStr(anoVisualizando, m);
+              const isFuturo = str > mesMaximoStr;
+              const temDados = mesesComDados.has(str);
+              const isSelecionado = value.ano === anoVisualizando && value.mes === m;
+
+              return (
+                <button
+                  key={m}
+                  disabled={isFuturo}
+                  onClick={() => selecionar(m)}
+                  className={[
+                    "relative flex flex-col items-center justify-center rounded-md py-1.5 text-xs font-medium transition-colors",
+                    isSelecionado
+                      ? "bg-primary text-primary-foreground"
+                      : isFuturo
+                      ? "opacity-30 cursor-not-allowed"
+                      : temDados
+                      ? "hover:bg-muted"
+                      : "text-muted-foreground hover:bg-muted",
+                  ].join(" ")}
+                >
+                  {nome}
+                  {/* Ponto indicador de dados */}
+                  {temDados && !isSelecionado && (
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -200,14 +308,25 @@ export default function DashboardPage() {
 
       {/* Receita diária com seletor de mês */}
       {(() => {
-        const mesesDisponiveis = stats.receita_por_mes.map((r) => r.mes);
-        const primeiromes = mesesDisponiveis[0];
+        const mesesComDados = new Set(stats.receita_por_mes.map((r) => r.mes));
+        const mesesLista = stats.receita_por_mes.map((r) => r.mes).sort();
+        const anoMinimo = mesesLista.length > 0 ? Number(mesesLista[0].slice(0, 4)) : hoje.getFullYear();
         const mesAtualStr = mesParaStr(hoje.getFullYear(), hoje.getMonth() + 1);
         const mesSelecionadoStr = mesParaStr(mesSelecionado.ano, mesSelecionado.mes);
-        const podePrev = primeiromes ? mesSelecionadoStr > primeiromes : false;
+
+        const podePrev = mesesLista.length > 0 && mesSelecionadoStr > mesesLista[0];
         const podeNext = mesSelecionadoStr < mesAtualStr;
-        const prev = mesAnterior(mesSelecionado.ano, mesSelecionado.mes);
-        const next = mesPosterior(mesSelecionado.ano, mesSelecionado.mes);
+
+        function prevMes() {
+          setMesSelecionado(mesSelecionado.mes === 1
+            ? { ano: mesSelecionado.ano - 1, mes: 12 }
+            : { ano: mesSelecionado.ano, mes: mesSelecionado.mes - 1 });
+        }
+        function nextMes() {
+          setMesSelecionado(mesSelecionado.mes === 12
+            ? { ano: mesSelecionado.ano + 1, mes: 1 }
+            : { ano: mesSelecionado.ano, mes: mesSelecionado.mes + 1 });
+        }
 
         return (
           <Card>
@@ -217,18 +336,21 @@ export default function DashboardPage() {
                 <button
                   className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   disabled={!podePrev}
-                  onClick={() => setMesSelecionado(prev)}
+                  onClick={prevMes}
                   aria-label="Mês anterior"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-sm font-medium tabular-nums w-36 text-center">
-                  {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
-                </span>
+                <MonthPicker
+                  value={mesSelecionado}
+                  onChange={setMesSelecionado}
+                  mesesComDados={mesesComDados}
+                  anoMinimo={anoMinimo}
+                />
                 <button
                   className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   disabled={!podeNext}
-                  onClick={() => setMesSelecionado(next)}
+                  onClick={nextMes}
                   aria-label="Próximo mês"
                 >
                   <ChevronRight className="h-4 w-4" />
