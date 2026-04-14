@@ -128,7 +128,7 @@ O frontend estará disponível em `http://localhost:5173`.
 | `POST` | `/categorias` | Cria nova categoria com imagem (retorna 409 se já existir) ⭐ |
 | `GET` | `/dashboard/stats` | Métricas gerais do e-commerce (KPIs, receita mensal, status, top categorias/produtos) ⭐ |
 | `GET` | `/dashboard/receita-diaria` | Receita diária de um mês (query params `ano`, `mes`) ⭐ |
-| `GET` | `/dashboard/stats-mes` | Pedidos por status e top categorias filtrados por mês (query params `ano`, `mes`) ⭐ |
+| `GET` | `/dashboard/stats-mes` | KPIs mensais (receita, ticket médio, pedidos, clientes, produtos), pedidos por status e top categorias filtrados por mês (query params `ano`, `mes`) ⭐ |
 
 ---
 
@@ -144,7 +144,7 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | **Timeline de vendas** (`GET /produtos/{id}/vendas/timeline?days=N`) | Série temporal diária de quantidade e receita para os últimos N dias (1 a 3650), usando `func.date()` do SQLite — cobre todo o histórico desde 2018 |
 | **Dashboard de métricas** (`GET /dashboard/stats`) | Endpoint agregado com: totais de produtos, pedidos, clientes e receita; receita por mês (todos os anos); pedidos por status; top 10 categorias por receita; top 10 produtos por receita |
 | **Receita diária** (`GET /dashboard/receita-diaria?ano&mes`) | Série temporal diária de receita e contagem de pedidos para o mês especificado, via `strftime` no SQLite |
-| **Stats por mês** (`GET /dashboard/stats-mes?ano&mes`) | Pedidos agrupados por status e top 10 categorias por receita filtrados pelo mês/ano selecionado |
+| **Stats por mês** (`GET /dashboard/stats-mes?ano&mes`) | KPIs mensais calculados via `COUNT(DISTINCT ...)`: receita, ticket médio, total de pedidos, clientes únicos e produtos distintos vendidos no mês; também retorna pedidos por status e top 10 categorias por receita |
 | **KPIs de categorias** (`GET /categorias/stats`) | Para cada categoria: total de produtos, receita, vendas, média de avaliações e URL da imagem; inclui categorias sem produtos ainda cadastrados |
 | **Dashboard de categoria** (`GET /categorias/{slug}/dashboard`) | Métricas completas de uma categoria: KPIs, ticket médio, top 10 produtos por receita e receita mensal histórica |
 | **Criar categoria** (`POST /categorias`) | Insere nova entrada em `categoria_imagens` com nome (slug) e URL de imagem sem limite de tamanho; retorna 409 em duplicata |
@@ -156,7 +156,7 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | **Design System (shadcn/ui)** | Arquitetura de componentes baseada no shadcn/ui, utilizando o tweakcn para customização exclusiva do tema.|
 | **Dark mode** | Toggle no menu lateral com persistência via `localStorage`; sem flash na inicialização |
 | **Menu lateral (Sidebar)** | Substitui a navbar superior; navegação entre Dashboard e Catálogo; toggle de tema na base |
-| **Dashboard analítico** | Página inicial com 4 KPI cards, gráfico de área com receita mensal histórica, dois gráficos de barras horizontais (pedidos por status + top categorias) e tabela dos top 10 produtos |
+| **Dashboard analítico** | Página inicial dividida em duas seções: **Visão Mensal** (5 KPI cards do mês selecionado — receita, ticket médio, pedidos, clientes e produtos vendidos — gráfico de área de receita diária e dois gráficos de barras horizontais de pedidos por status e top categorias) e **Métricas Totais** (5 KPI cards históricos acumulados, histórico anual comparativo, top categorias e tabela dos top 10 produtos) |
 | **Health Score Ring** | Anel SVG animado no cabeçalho da página de detalhes com cor semântica (verde ≥ 80, amarelo ≥ 50, vermelho < 50) |
 | **Busca ao vivo** | A barra de pesquisa do catálogo dispara automaticamente com debounce de 400 ms, letra por letra, sem necessidade de confirmar |
 | **Simulador de preço** | Slider no formulário de edição que projeta quantas unidades/mês são necessárias para manter a receita atual caso o preço médio mude |
@@ -172,11 +172,10 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | **Página de Categorias** (`/categorias`) | Grid visual de todas as categorias com banner de imagem, 4 KPIs por card (produtos, vendas, receita, avaliação média), badges de ranking (Trophy/Medal/Award) para o top 3, busca por nome e ordenação por receita, avaliação, produtos ou vendas |
 | **Detalhe de Categoria** (`/categorias/:slug`) | Dashboard individual por categoria: banner com imagem, KPI cards, ticket médio, gráfico de área com receita mensal e tabela dos top 10 produtos com link direto ao detalhe |
 | **Criar Categoria** | Dialog acessível pelo botão "Nova Categoria" na página de categorias; campo de nome (convertido automaticamente para slug), URL de imagem sem restrição de formato/tamanho e preview ao vivo — submit liberado mesmo que o preview não carregue (hotlink/CORS) |
-| **Gráfico de Receita Diária** | Substitui o gráfico mensal do dashboard por uma visão diária do mês selecionado; eixo X exibe o dia, tooltip com data completa por extenso e spinner durante a troca de mês |
 | **Seletor de Mês/Ano** | Componente `MonthPicker` no card de receita diária: botão trigger `Mês Ano ▼` abre dropdown com navegação por ano (`< 2023 >`) e grade 4×3 dos 12 meses; meses com dados marcados com ponto indicador; meses futuros desabilitados; setas `‹ ›` laterais para navegação rápida; seleção persiste durante a navegação SPA e reseta no reload |
-| **Charts filtrados por mês** | "Pedidos por Status" e "Top Categorias por Receita" seguem o mês selecionado no gráfico de receita diária, com título contextual, spinner e empty state individuais |
-| **Histórico Anual Comparativo** | Seção abaixo dos charts mensais com `LineChart` multi-série (uma linha por ano); botões de toggle coloridos por ano (cor do botão = cor da linha); mínimo de 1 ano sempre ativo; dados derivados de `receita_por_mes` sem request adicional |
-| **Atalho de Categorias no Dashboard** | Card "Top Categorias" com os 4 departamentos de maior receita exibidos como mini cards com imagem e receita; link "Ver todas" navega para `/categorias` |
+| **Charts filtrados por mês** | "Pedidos por Status" e "Top Categorias por Receita" seguem o mês selecionado no gráfico de receita diária, com título contextual, spinner e empty state individuais; exibidos na seção Visão Mensal |
+| **Histórico Anual Comparativo** | `LineChart` multi-série na seção Métricas Totais (uma linha por ano); botões de toggle coloridos por ano (cor do botão = cor da linha); mínimo de 1 ano sempre ativo; dados derivados de `receita_por_mes` sem request adicional |
+| **Atalho de Categorias no Dashboard** | Card "Top Categorias" com os 4 departamentos de maior receita exibidos como mini cards com imagem e receita; link "Ver todas" navega para `/categorias`; exibido na seção Métricas Totais |
 
 ---
 
