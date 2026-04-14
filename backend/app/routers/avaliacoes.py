@@ -46,7 +46,8 @@ def listar_avaliacoes(id_produto: str, db: Session = Depends(get_db)):
         .join(Pedido, AvaliacaoPedido.id_pedido == Pedido.id_pedido)
         .join(ItemPedido, ItemPedido.id_pedido == Pedido.id_pedido)
         .filter(ItemPedido.id_produto == id_produto)
-        .order_by(AvaliacaoPedido.data_comentario.desc())
+        .distinct(AvaliacaoPedido.id_avaliacao)
+        .order_by(AvaliacaoPedido.id_avaliacao, AvaliacaoPedido.data_comentario.desc())
         .all()
     )
 

@@ -70,6 +70,19 @@ def get_stats_mes(
         func.strftime("%m", Pedido.pedido_compra_timestamp) == mes_str,
     ]
 
+    kpis_mes_row = (
+        db.query(
+            func.sum(ItemPedido.preco_BRL).label("receita"),
+            func.avg(ItemPedido.preco_BRL).label("ticket_medio"),
+            func.count(func.distinct(Pedido.id_pedido)).label("total_pedidos"),
+            func.count(func.distinct(Pedido.id_consumidor)).label("total_clientes"),
+            func.count(func.distinct(ItemPedido.id_produto)).label("total_produtos"),
+        )
+        .join(Pedido, ItemPedido.id_pedido == Pedido.id_pedido)
+        .filter(*filtro_mes)
+        .first()
+    )
+
     pedidos_por_status_rows = (
         db.query(Pedido.status, func.count(Pedido.id_pedido).label("total"))
         .filter(*filtro_mes)
@@ -98,6 +111,11 @@ def get_stats_mes(
     )
 
     return DashboardMesStats(
+        receita_mes=round(kpis_mes_row.receita or 0, 2),
+        ticket_medio_mes=round(kpis_mes_row.ticket_medio, 2) if kpis_mes_row.ticket_medio else None,
+        total_pedidos_mes=kpis_mes_row.total_pedidos or 0,
+        total_clientes_mes=kpis_mes_row.total_clientes or 0,
+        total_produtos_mes=kpis_mes_row.total_produtos or 0,
         pedidos_por_status=[
             StatusItem(status=r.status, total=r.total)
             for r in pedidos_por_status_rows

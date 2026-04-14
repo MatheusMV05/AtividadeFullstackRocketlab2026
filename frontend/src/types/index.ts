@@ -139,6 +139,11 @@ export interface CategoriaCreate {
 }
 
 export interface DashboardMesStats {
+  receita_mes: number;
+  ticket_medio_mes: number | null;
+  total_pedidos_mes: number;
+  total_clientes_mes: number;
+  total_produtos_mes: number;
   pedidos_por_status: StatusItem[];
   top_categorias: CategoriaStatItem[];
 }

@@ -41,14 +41,6 @@ function formatCurrencyShort(value: number) {
   return `R$${value.toFixed(0)}`;
 }
 
-function formatMonth(mes: string) {
-  const [year, month] = mes.split("-");
-  return new Date(Number(year), Number(month) - 1).toLocaleDateString("pt-BR", {
-    month: "short",
-    year: "2-digit",
-  });
-}
-
 const STATUS_COLORS: Record<string, string> = {
   entregue: "#22c55e",
   faturado: "#3b82f6",
@@ -98,7 +90,6 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
   const [anoVisualizando, setAnoVisualizando] = useState(value.ano);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Fecha ao clicar fora
   useEffect(() => {
     if (!aberto) return;
     function handler(e: MouseEvent) {
@@ -108,7 +99,6 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
     return () => document.removeEventListener("mousedown", handler);
   }, [aberto]);
 
-  // Sincroniza o ano visualizado quando o valor externo muda (prev/next)
   useEffect(() => {
     setAnoVisualizando(value.ano);
   }, [value.ano]);
@@ -120,7 +110,6 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
 
   return (
     <div ref={ref} className="relative">
-      {/* Trigger */}
       <button
         onClick={() => setAberto((o) => !o)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm font-medium hover:bg-muted transition-colors"
@@ -129,10 +118,8 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${aberto ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Dropdown */}
       {aberto && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 rounded-lg border bg-popover shadow-lg p-3 w-56">
-          {/* Navegação de ano */}
+        <div className="absolute left-0 top-full mt-1.5 z-50 rounded-lg border bg-popover shadow-lg p-3 w-56">
           <div className="flex items-center justify-between mb-3">
             <button
               className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -151,7 +138,6 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
             </button>
           </div>
 
-          {/* Grade de meses */}
           <div className="grid grid-cols-4 gap-1">
             {MESES_CURTO.map((nome, idx) => {
               const m = idx + 1;
@@ -177,7 +163,6 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
                   ].join(" ")}
                 >
                   {nome}
-                  {/* Ponto indicador de dados */}
                   {temDados && !isSelecionado && (
                     <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
                   )}
@@ -187,6 +172,47 @@ function MonthPicker({ value, onChange, mesesComDados, anoMinimo }: MonthPickerP
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+          {icon} {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
+        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionDivider({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="pt-2">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="h-px flex-1 bg-border" />
+        <div className="text-center">
+          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+        </div>
+        <div className="h-px flex-1 bg-border" />
+      </div>
     </div>
   );
 }
@@ -210,7 +236,6 @@ export default function DashboardPage() {
     api.getDashboardStats()
       .then((s) => {
         setStats(s);
-        // Inicializa todos os anos disponíveis como selecionados
         const anos = [...new Set(s.receita_por_mes.map((r) => Number(r.mes.slice(0, 4))))].sort();
         setAnosHistoricoSelecionados(anos);
       })
@@ -239,8 +264,8 @@ export default function DashboardPage() {
     return (
       <div className="p-8 space-y-6">
         <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-28 bg-muted animate-pulse rounded-lg" />
           ))}
         </div>
@@ -251,191 +276,197 @@ export default function DashboardPage() {
 
   if (!stats) return null;
 
+  const mesesComDados = new Set(stats.receita_por_mes.map((r) => r.mes));
+  const mesesLista = stats.receita_por_mes.map((r) => r.mes).sort();
+  const anoMinimo = mesesLista.length > 0 ? Number(mesesLista[0].slice(0, 4)) : hoje.getFullYear();
+  const mesAtualStr = mesParaStr(hoje.getFullYear(), hoje.getMonth() + 1);
+  const mesSelecionadoStr = mesParaStr(mesSelecionado.ano, mesSelecionado.mes);
+
+  const podePrev = mesesLista.length > 0 && mesSelecionadoStr > mesesLista[0];
+  const podeNext = mesSelecionadoStr < mesAtualStr;
+
+  function prevMes() {
+    setMesSelecionado(mesSelecionado.mes === 1
+      ? { ano: mesSelecionado.ano - 1, mes: 12 }
+      : { ano: mesSelecionado.ano, mes: mesSelecionado.mes - 1 });
+  }
+  function nextMes() {
+    setMesSelecionado(mesSelecionado.mes === 12
+      ? { ano: mesSelecionado.ano + 1, mes: 1 }
+      : { ano: mesSelecionado.ano, mes: mesSelecionado.mes + 1 });
+  }
+
+  const mesLabel = `${MESES_PT[mesSelecionado.mes - 1]} ${mesSelecionado.ano}`;
+
+  // ── Histórico multi-ano ──────────────────────────────────────────────────
+  const anosDisponiveis = [...new Set(
+    stats.receita_por_mes.map((r) => Number(r.mes.slice(0, 4)))
+  )].sort();
+
+  const porMes: Record<number, Record<string, number>> = {};
+  for (let m = 1; m <= 12; m++) porMes[m] = {};
+  for (const item of stats.receita_por_mes) {
+    const ano = Number(item.mes.slice(0, 4));
+    const mes = Number(item.mes.slice(5, 7));
+    if (anosHistoricoSelecionados.includes(ano)) {
+      porMes[mes][String(ano)] = (porMes[mes][String(ano)] ?? 0) + item.receita;
+    }
+  }
+  const historicoData = Array.from({ length: 12 }, (_, i) => ({
+    mesNum: i + 1,
+    label: MESES_CURTO[i],
+    ...porMes[i + 1],
+  }));
+  const coresAnos = ["#3b82f6", "#f97316", "#22c55e", "#8b5cf6", "#ec4899", "#f59e0b"];
+
+  function toggleAno(ano: number) {
+    setAnosHistoricoSelecionados((prev) =>
+      prev.includes(ano)
+        ? prev.length > 1 ? prev.filter((a) => a !== ano) : prev
+        : [...prev, ano].sort()
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-7xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Visão geral do e-commerce
-        </p>
+        <p className="text-muted-foreground text-sm mt-1">Visão geral do e-commerce</p>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5" /> Receita Total
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold tabular-nums">
-              {formatCurrencyShort(stats.receita_total)}
-            </div>
-            {stats.ticket_medio != null && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Ticket médio: {formatCurrency(stats.ticket_medio)}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      {/* ═══════════════════════════════════════════════════════════════════
+          SEÇÃO 1 — VISÃO MENSAL
+      ═══════════════════════════════════════════════════════════════════ */}
+      <SectionDivider
+        title="Visão Mensal"
+        subtitle={mesLabel}
+      />
 
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <ShoppingCart className="h-3.5 w-3.5" /> Total de Pedidos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold tabular-nums">
-              {stats.total_pedidos.toLocaleString("pt-BR")}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" /> Clientes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold tabular-nums">
-              {stats.total_consumidores.toLocaleString("pt-BR")}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Produtos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold tabular-nums">
-              {stats.total_produtos.toLocaleString("pt-BR")}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Navegação de mês */}
+      <div className="flex items-center gap-1 -mt-2">
+        <button
+          className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          disabled={!podePrev}
+          onClick={prevMes}
+          aria-label="Mês anterior"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <MonthPicker
+          value={mesSelecionado}
+          onChange={setMesSelecionado}
+          mesesComDados={mesesComDados}
+          anoMinimo={anoMinimo}
+        />
+        <button
+          className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          disabled={!podeNext}
+          onClick={nextMes}
+          aria-label="Próximo mês"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
 
-      {/* Receita diária com seletor de mês */}
-      {(() => {
-        const mesesComDados = new Set(stats.receita_por_mes.map((r) => r.mes));
-        const mesesLista = stats.receita_por_mes.map((r) => r.mes).sort();
-        const anoMinimo = mesesLista.length > 0 ? Number(mesesLista[0].slice(0, 4)) : hoje.getFullYear();
-        const mesAtualStr = mesParaStr(hoje.getFullYear(), hoje.getMonth() + 1);
-        const mesSelecionadoStr = mesParaStr(mesSelecionado.ano, mesSelecionado.mes);
+      {/* KPIs mensais */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {loadingDiario || !statsMes ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
+          ))
+        ) : (
+          <>
+            <KpiCard
+              icon={<TrendingUp className="h-3.5 w-3.5" />}
+              label="Receita do Mês"
+              value={formatCurrencyShort(statsMes.receita_mes)}
+              sub={formatCurrency(statsMes.receita_mes)}
+            />
+            <KpiCard
+              icon={<TrendingUp className="h-3.5 w-3.5" />}
+              label="Ticket Médio"
+              value={statsMes.ticket_medio_mes != null ? formatCurrency(statsMes.ticket_medio_mes) : "—"}
+            />
+            <KpiCard
+              icon={<ShoppingCart className="h-3.5 w-3.5" />}
+              label="Pedidos"
+              value={statsMes.total_pedidos_mes.toLocaleString("pt-BR")}
+            />
+            <KpiCard
+              icon={<Users className="h-3.5 w-3.5" />}
+              label="Clientes"
+              value={statsMes.total_clientes_mes.toLocaleString("pt-BR")}
+            />
+            <KpiCard
+              icon={<Package className="h-3.5 w-3.5" />}
+              label="Produtos Vendidos"
+              value={statsMes.total_produtos_mes.toLocaleString("pt-BR")}
+            />
+          </>
+        )}
+      </div>
 
-        const podePrev = mesesLista.length > 0 && mesSelecionadoStr > mesesLista[0];
-        const podeNext = mesSelecionadoStr < mesAtualStr;
-
-        function prevMes() {
-          setMesSelecionado(mesSelecionado.mes === 1
-            ? { ano: mesSelecionado.ano - 1, mes: 12 }
-            : { ano: mesSelecionado.ano, mes: mesSelecionado.mes - 1 });
-        }
-        function nextMes() {
-          setMesSelecionado(mesSelecionado.mes === 12
-            ? { ano: mesSelecionado.ano + 1, mes: 1 }
-            : { ano: mesSelecionado.ano, mes: mesSelecionado.mes + 1 });
-        }
-
-        return (
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-semibold">Receita Diária</CardTitle>
-              <div className="flex items-center gap-1">
-                <button
-                  className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  disabled={!podePrev}
-                  onClick={prevMes}
-                  aria-label="Mês anterior"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <MonthPicker
-                  value={mesSelecionado}
-                  onChange={setMesSelecionado}
-                  mesesComDados={mesesComDados}
-                  anoMinimo={anoMinimo}
+      {/* Receita diária do mês */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Receita Diária — {mesLabel}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingDiario ? (
+            <div className="h-[240px] flex items-center justify-center">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : receitaDiaria.length === 0 ? (
+            <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">
+              Sem dados para {mesLabel}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={receitaDiaria} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="dashReceitaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="dia"
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(dia: string) => dia.slice(8)}
+                  interval="preserveStartEnd"
                 />
-                <button
-                  className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  disabled={!podeNext}
-                  onClick={nextMes}
-                  aria-label="Próximo mês"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingDiario ? (
-                <div className="h-[240px] flex items-center justify-center">
-                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : receitaDiaria.length === 0 ? (
-                <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">
-                  Sem dados para {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart
-                    data={receitaDiaria}
-                    margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="dashReceitaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis
-                      dataKey="dia"
-                      tick={{ fontSize: 10 }}
-                      tickFormatter={(dia: string) => dia.slice(8)}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10 }}
-                      tickFormatter={formatCurrencyShort}
-                      width={64}
-                    />
-                    <Tooltip
-                      formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
-                      labelFormatter={(dia) =>
-                        new Date(String(dia) + "T00:00:00").toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })
-                      }
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="receita"
-                      stroke="var(--color-primary)"
-                      fill="url(#dashReceitaGrad)"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })()}
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} width={64} />
+                <Tooltip
+                  formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
+                  labelFormatter={(dia) =>
+                    new Date(String(dia) + "T00:00:00").toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  }
+                />
+                <Area
+                  type="monotone"
+                  dataKey="receita"
+                  stroke="var(--color-primary)"
+                  fill="url(#dashReceitaGrad)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Status + Top categories — filtrados pelo mês selecionado */}
+      {/* Pedidos por Status + Top Categorias do mês */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">
-              Pedidos por Status — {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
+              Pedidos por Status — {mesLabel}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -472,7 +503,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">
-              Top Categorias — {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
+              Top Categorias — {mesLabel}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -510,92 +541,98 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Histórico anual — comparativo multi-ano */}
-      {stats.receita_por_mes.length > 0 && (() => {
-        const anosDisponiveis = [...new Set(
-          stats.receita_por_mes.map((r) => Number(r.mes.slice(0, 4)))
-        )].sort();
+      {/* ═══════════════════════════════════════════════════════════════════
+          SEÇÃO 2 — MÉTRICAS TOTAIS
+      ═══════════════════════════════════════════════════════════════════ */}
+      <SectionDivider
+        title="Métricas Totais"
+        subtitle="Acumulado histórico do e-commerce"
+      />
 
-        // Transforma em [{mesNum, label, "2023": val, "2024": val, ...}]
-        const porMes: Record<number, Record<string, number>> = {};
-        for (let m = 1; m <= 12; m++) porMes[m] = {};
-        for (const item of stats.receita_por_mes) {
-          const ano = Number(item.mes.slice(0, 4));
-          const mes = Number(item.mes.slice(5, 7));
-          if (anosHistoricoSelecionados.includes(ano)) {
-            porMes[mes][String(ano)] = (porMes[mes][String(ano)] ?? 0) + item.receita;
-          }
-        }
-        const historicoData = Array.from({ length: 12 }, (_, i) => ({
-          mesNum: i + 1,
-          label: MESES_CURTO[i],
-          ...porMes[i + 1],
-        }));
+      {/* KPIs totais */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <KpiCard
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          label="Receita Total"
+          value={formatCurrencyShort(stats.receita_total)}
+          sub={formatCurrency(stats.receita_total)}
+        />
+        <KpiCard
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          label="Ticket Médio"
+          value={stats.ticket_medio != null ? formatCurrency(stats.ticket_medio) : "—"}
+        />
+        <KpiCard
+          icon={<ShoppingCart className="h-3.5 w-3.5" />}
+          label="Total de Pedidos"
+          value={stats.total_pedidos.toLocaleString("pt-BR")}
+        />
+        <KpiCard
+          icon={<Users className="h-3.5 w-3.5" />}
+          label="Clientes"
+          value={stats.total_consumidores.toLocaleString("pt-BR")}
+        />
+        <KpiCard
+          icon={<Package className="h-3.5 w-3.5" />}
+          label="Produtos"
+          value={stats.total_produtos.toLocaleString("pt-BR")}
+        />
+      </div>
 
-        const coresAnos = ["#3b82f6", "#f97316", "#22c55e", "#8b5cf6", "#ec4899", "#f59e0b"];
-
-        function toggleAno(ano: number) {
-          setAnosHistoricoSelecionados((prev) =>
-            prev.includes(ano)
-              ? prev.length > 1 ? prev.filter((a) => a !== ano) : prev
-              : [...prev, ano].sort()
-          );
-        }
-
-        return (
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-sm font-semibold">Histórico de Receita por Ano</CardTitle>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {anosDisponiveis.map((ano, i) => {
-                  const ativo = anosHistoricoSelecionados.includes(ano);
-                  return (
-                    <button
-                      key={ano}
-                      onClick={() => toggleAno(ano)}
-                      className={[
-                        "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
-                        ativo
-                          ? "text-white border-transparent"
-                          : "bg-transparent text-muted-foreground border-border hover:border-foreground",
-                      ].join(" ")}
-                      style={ativo ? { backgroundColor: coresAnos[i % coresAnos.length], borderColor: coresAnos[i % coresAnos.length] } : {}}
-                    >
-                      {ano}
-                    </button>
-                  );
-                })}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={historicoData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} width={64} />
-                  <Tooltip
-                    formatter={(value, name) => [formatCurrency(Number(value)), String(name)]}
+      {/* Histórico anual multi-ano */}
+      {stats.receita_por_mes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm font-semibold">Histórico de Receita por Ano</CardTitle>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {anosDisponiveis.map((ano, i) => {
+                const ativo = anosHistoricoSelecionados.includes(ano);
+                return (
+                  <button
+                    key={ano}
+                    onClick={() => toggleAno(ano)}
+                    className={[
+                      "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                      ativo
+                        ? "text-white border-transparent"
+                        : "bg-transparent text-muted-foreground border-border hover:border-foreground",
+                    ].join(" ")}
+                    style={ativo ? { backgroundColor: coresAnos[i % coresAnos.length], borderColor: coresAnos[i % coresAnos.length] } : {}}
+                  >
+                    {ano}
+                  </button>
+                );
+              })}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={historicoData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} width={64} />
+                <Tooltip
+                  formatter={(value, name) => [formatCurrency(Number(value)), String(name)]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {anosHistoricoSelecionados.map((ano, i) => (
+                  <Line
+                    key={ano}
+                    type="monotone"
+                    dataKey={String(ano)}
+                    stroke={coresAnos[anosDisponiveis.indexOf(ano) % coresAnos.length]}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
                   />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  {anosHistoricoSelecionados.map((ano, i) => (
-                    <Line
-                      key={ano}
-                      type="monotone"
-                      dataKey={String(ano)}
-                      stroke={coresAnos[anosDisponiveis.indexOf(ano) % coresAnos.length]}
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        );
-      })()}
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Atalho categorias */}
+      {/* Top Categorias totais */}
       {topCategorias.length > 0 && (
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -641,7 +678,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Top products table */}
+      {/* Top 10 Produtos por Receita (total histórico) */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold">Top 10 Produtos por Receita</CardTitle>

@@ -101,6 +101,13 @@ export default function ProductDetailPage() {
   const [timelineDays, setTimelineDays] = useState<30 | 180 | 365 | 730 | 1825 | 3650>(365);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTab>("avaliacoes");
+  const [avaliacoesVisiveis, setAvaliacoesVisiveis] = useState(20);
+  const [vendasVisiveis, setVendasVisiveis] = useState(50);
+
+  useEffect(() => {
+    setAvaliacoesVisiveis(20);
+    setVendasVisiveis(50);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -391,8 +398,8 @@ export default function ProductDetailPage() {
         <div className="flex gap-1 mb-4 border-b">
           {(["avaliacoes", "vendas", "desempenho"] as ActiveTab[]).map((tab) => {
             const labels: Record<ActiveTab, string> = {
-              avaliacoes: `Avaliações (${avaliacoes.length})`,
-              vendas: `Vendas (${vendas.length})`,
+              avaliacoes: `Avaliações (${avaliacaoStats?.total_avaliacoes ?? avaliacoes.length})`,
+              vendas: `Vendas (${vendaStats?.total_vendas ?? vendas.length})`,
               desempenho: "Desempenho",
             };
             return (
@@ -430,24 +437,37 @@ export default function ProductDetailPage() {
                 </Button>
               </div>
             ) : (
-              avaliacoes.slice(0, 20).map((av) => (
-                <Card key={av.id_avaliacao}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <StarRating value={av.avaliacao} />
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(av.data_comentario)}
-                      </span>
-                    </div>
-                    {av.titulo_comentario && (
-                      <p className="font-medium text-sm mt-2">{av.titulo_comentario}</p>
-                    )}
-                    {av.comentario && (
-                      <p className="text-sm text-muted-foreground mt-1">{av.comentario}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+              <>
+                {avaliacoes.slice(0, avaliacoesVisiveis).map((av) => (
+                  <Card key={av.id_avaliacao}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <StarRating value={av.avaliacao} />
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(av.data_comentario)}
+                        </span>
+                      </div>
+                      {av.titulo_comentario && (
+                        <p className="font-medium text-sm mt-2">{av.titulo_comentario}</p>
+                      )}
+                      {av.comentario && (
+                        <p className="text-sm text-muted-foreground mt-1">{av.comentario}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+                {avaliacoesVisiveis < avaliacoes.length && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAvaliacoesVisiveis((v) => v + 20)}
+                    >
+                      Ver mais ({avaliacoes.length - avaliacoesVisiveis} restantes)
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -467,64 +487,75 @@ export default function ProductDetailPage() {
                 </Button>
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/50">
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Data</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Preço</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Frete</th>
-                      <th className="text-center px-4 py-3 font-medium text-muted-foreground">No Prazo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vendas.slice(0, 50).map((v, idx) => (
-                      <tr
-                        key={`${v.id_pedido}-${v.id_item}`}
-                        className={idx % 2 === 0 ? "" : "bg-muted/20"}
-                      >
-                        <td className="px-4 py-3">{formatDate(v.pedido_compra_timestamp)}</td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant={
-                              v.status === "entregue"
-                                ? "default"
-                                : v.status === "cancelado"
-                                ? "destructive"
-                                : "secondary"
-                            }
-                            className="text-xs"
-                          >
-                            {v.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
-                          {formatCurrency(v.preco_BRL)}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
-                          {formatCurrency(v.preco_frete)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {v.entrega_no_prazo === "Sim" ? (
-                            <span className="text-green-600">Sim</span>
-                          ) : v.entrega_no_prazo === "Não" ||
-                            v.entrega_no_prazo === "Não Entregue" ? (
-                            <span className="text-red-600">{v.entrega_no_prazo}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
+              <>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Data</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Preço</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Frete</th>
+                        <th className="text-center px-4 py-3 font-medium text-muted-foreground">No Prazo</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {vendas.length > 50 && (
-                  <div className="px-4 py-3 text-xs text-muted-foreground border-t bg-muted/20">
-                    Exibindo 50 de {vendas.length} vendas
-                  </div>
-                )}
-              </div>
+                    </thead>
+                    <tbody>
+                      {vendas.slice(0, vendasVisiveis).map((v, idx) => (
+                        <tr
+                          key={`${v.id_pedido}-${v.id_item}`}
+                          className={idx % 2 === 0 ? "" : "bg-muted/20"}
+                        >
+                          <td className="px-4 py-3">{formatDate(v.pedido_compra_timestamp)}</td>
+                          <td className="px-4 py-3">
+                            <Badge
+                              variant={
+                                v.status === "entregue"
+                                  ? "default"
+                                  : v.status === "cancelado"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              className="text-xs"
+                            >
+                              {v.status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">
+                            {formatCurrency(v.preco_BRL)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">
+                            {formatCurrency(v.preco_frete)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {v.entrega_no_prazo === "Sim" ? (
+                              <span className="text-green-600">Sim</span>
+                            ) : v.entrega_no_prazo === "Não" ||
+                              v.entrega_no_prazo === "Não Entregue" ? (
+                              <span className="text-red-600">{v.entrega_no_prazo}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {vendasVisiveis < vendas.length && (
+                    <div className="px-4 py-3 border-t bg-muted/20 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        Exibindo {vendasVisiveis} de {vendas.length} vendas
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVendasVisiveis((v) => v + 50)}
+                      >
+                        Ver mais
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}

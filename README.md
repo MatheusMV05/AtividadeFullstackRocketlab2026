@@ -166,7 +166,6 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | **Cores por categoria** | Badges coloridos para cada grupo de categoria (eletrônicos = azul, games = violeta, moda = rosa, casa = âmbar, etc.) |
 | **Formatação de nomes e categorias** | `formatNomeProduto` remove artefatos de escape CSV; `formatCategoria` converte slugs snake_case para rótulos legíveis em português |
 | **Animações de layout** | Cards do catálogo animam com `framer-motion` (`layout` prop) ao filtrar; entrada das seções da página de detalhes é escalonada (`staggerChildren: 0.08s`) |
-| **Transição compartilhada** | O título do produto usa `layoutId` do Framer Motion para uma transição suave do card do catálogo até o cabeçalho da página de detalhes |
 | **Botão de salvar animado** | Três estados com `AnimatePresence`: ícone de salvar → spinner giratório → ícone de check (verde), seguido de redirecionamento automático |
 | **Empty states acionáveis** | Telas vazias de avaliações e vendas incluem botões de ação contextuais (ex.: "Editar Produto", "Ver Catálogo") |
 | **Numerais tabulares** | Classe `tabular-nums` em todos os valores numéricos (KPIs, tabelas de vendas) para alinhamento visual consistente |
