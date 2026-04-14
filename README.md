@@ -121,9 +121,10 @@ O frontend estará disponível em `http://localhost:5173`.
 | `GET` | `/produtos/{id}/avaliacoes/stats` | Estatísticas de avaliações |
 | `GET` | `/produtos/{id}/vendas` | Lista vendas do produto |
 | `GET` | `/produtos/{id}/vendas/stats` | Estatísticas de vendas |
-| `GET` | `/produtos/{id}/avaliacoes/tags` | Tags de sentimento extraídas dos textos de avaliação ⭐ |
-| `GET` | `/produtos/{id}/vendas/timeline` | Série temporal de vendas por dia (query param `days`) ⭐ |
+| `GET` | `/produtos/{id}/vendas/timeline` | Série temporal diária de vendas (query param `days`, 1–3650) ⭐ |
 | `GET` | `/produtos/{id}/health-score` | Score de saúde do produto (0–100) ⭐ |
+| `GET` | `/dashboard/stats` | Métricas gerais do e-commerce (KPIs, receita mensal, status, top categorias/produtos) ⭐ |
+
 ---
 
 ## Extras implementados
