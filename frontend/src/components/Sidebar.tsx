@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, Package, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/produtos", icon: Package, label: "Catálogo" },
+  { to: "/categorias", icon: LayoutGrid, label: "Categorias" },
 ];
 
 function isActiveLink(to: string, pathname: string): boolean {
@@ -14,6 +15,7 @@ function isActiveLink(to: string, pathname: string): boolean {
   if (to === "/produtos") {
     return pathname.startsWith("/produtos") && pathname !== "/produtos/novo";
   }
+  if (to === "/categorias") return pathname === "/categorias" || pathname.startsWith("/categorias/");
   return false;
 }
 

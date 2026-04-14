@@ -7,6 +7,12 @@ class ReceitaMensalItem(BaseModel):
     pedidos: int
 
 
+class ReceitaDiariaItem(BaseModel):
+    dia: str
+    receita: float
+    pedidos: int
+
+
 class StatusItem(BaseModel):
     status: str
     total: int

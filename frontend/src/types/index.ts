@@ -88,6 +88,12 @@ export interface ReceitaMensalItem {
   pedidos: number;
 }
 
+export interface ReceitaDiariaItem {
+  dia: string;
+  receita: number;
+  pedidos: number;
+}
+
 export interface StatusItem {
   status: string;
   total: number;
@@ -104,6 +110,32 @@ export interface ProdutoTopItem {
   nome_produto: string;
   total_vendas: number;
   receita: number;
+}
+
+export interface CategoriaStats {
+  categoria: string;
+  link_imagem: string | null;
+  total_produtos: number;
+  receita_total: number;
+  media_avaliacao: number | null;
+  total_vendas: number;
+}
+
+export interface CategoriaDashboard {
+  categoria: string;
+  link_imagem: string | null;
+  total_produtos: number;
+  receita_total: number;
+  total_vendas: number;
+  media_avaliacao: number | null;
+  ticket_medio: number | null;
+  top_produtos: ProdutoTopItem[];
+  receita_por_mes: ReceitaMensalItem[];
+}
+
+export interface CategoriaCreate {
+  categoria: string;
+  link_imagem: string;
 }
 
 export interface DashboardStats {

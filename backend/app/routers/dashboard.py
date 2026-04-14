@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -11,11 +11,48 @@ from app.schemas.dashboard import (
     CategoriaStatItem,
     DashboardStats,
     ProdutoTopItem,
+    ReceitaDiariaItem,
     ReceitaMensalItem,
     StatusItem,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+@router.get("/receita-diaria", response_model=list[ReceitaDiariaItem])
+def get_receita_diaria(
+    ano: int = Query(..., ge=2000, le=2100),
+    mes: int = Query(..., ge=1, le=12),
+    db: Session = Depends(get_db),
+):
+    mes_str = f"{mes:02d}"
+    ano_str = str(ano)
+
+    rows = (
+        db.query(
+            func.strftime("%Y-%m-%d", Pedido.pedido_compra_timestamp).label("dia"),
+            func.count(ItemPedido.id_pedido).label("pedidos"),
+            func.sum(ItemPedido.preco_BRL).label("receita"),
+        )
+        .join(Pedido, ItemPedido.id_pedido == Pedido.id_pedido)
+        .filter(
+            Pedido.pedido_compra_timestamp.isnot(None),
+            func.strftime("%Y", Pedido.pedido_compra_timestamp) == ano_str,
+            func.strftime("%m", Pedido.pedido_compra_timestamp) == mes_str,
+        )
+        .group_by("dia")
+        .order_by("dia")
+        .all()
+    )
+
+    return [
+        ReceitaDiariaItem(
+            dia=r.dia,
+            pedidos=r.pedidos,
+            receita=round(r.receita or 0, 2),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/stats", response_model=DashboardStats)

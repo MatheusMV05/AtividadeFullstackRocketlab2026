@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
   Package,
   ShoppingCart,
   TrendingUp,
@@ -20,7 +24,7 @@ import {
 } from "recharts";
 import { api } from "@/lib/api";
 import { formatCategoria, formatNomeProduto } from "@/lib/utils";
-import type { DashboardStats } from "@/types";
+import type { CategoriaStats, DashboardStats, ReceitaDiariaItem } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function formatCurrency(value: number) {
@@ -58,16 +62,56 @@ const CATEGORY_COLORS = [
   "#a3e635", "#e879f9",
 ];
 
+// Persiste durante navegação SPA; reseta no reload da página
+let _mesSelecionado: { ano: number; mes: number } | null = null;
+
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function mesAnterior(ano: number, mes: number) {
+  return mes === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: mes - 1 };
+}
+function mesPosterior(ano: number, mes: number) {
+  return mes === 12 ? { ano: ano + 1, mes: 1 } : { ano, mes: mes + 1 };
+}
+function mesParaStr(ano: number, mes: number) {
+  return `${ano}-${String(mes).padStart(2, "0")}`;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [topCategorias, setTopCategorias] = useState<CategoriaStats[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const hoje = new Date();
+  const [mesSelecionado, setMesSelecionado] = useState<{ ano: number; mes: number }>(
+    _mesSelecionado ?? { ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 }
+  );
+  const [receitaDiaria, setReceitaDiaria] = useState<ReceitaDiariaItem[]>([]);
+  const [loadingDiario, setLoadingDiario] = useState(false);
 
   useEffect(() => {
     api.getDashboardStats()
       .then(setStats)
       .finally(() => setLoading(false));
+    api.getCategoriasStats().then((cats) =>
+      setTopCategorias(
+        [...cats].sort((a, b) => b.receita_total - a.receita_total).slice(0, 4)
+      )
+    );
   }, []);
+
+  useEffect(() => {
+    _mesSelecionado = mesSelecionado;
+    setLoadingDiario(true);
+    api
+      .getDashboardReceitaDiaria(mesSelecionado.ano, mesSelecionado.mes)
+      .then(setReceitaDiaria)
+      .finally(() => setLoadingDiario(false));
+  }, [mesSelecionado]);
 
   if (loading) {
     return (
@@ -154,51 +198,101 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Revenue over time */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Receita por Mês</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart
-              data={stats.receita_por_mes}
-              margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="dashReceitaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis
-                dataKey="mes"
-                tick={{ fontSize: 10 }}
-                tickFormatter={formatMonth}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 10 }}
-                tickFormatter={formatCurrencyShort}
-                width={64}
-              />
-              <Tooltip
-                formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
-                labelFormatter={(label) => formatMonth(String(label ?? ""))}
-              />
-              <Area
-                type="monotone"
-                dataKey="receita"
-                stroke="var(--color-primary)"
-                fill="url(#dashReceitaGrad)"
-                strokeWidth={2}
-                dot={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Receita diária com seletor de mês */}
+      {(() => {
+        const mesesDisponiveis = stats.receita_por_mes.map((r) => r.mes);
+        const primeiromes = mesesDisponiveis[0];
+        const mesAtualStr = mesParaStr(hoje.getFullYear(), hoje.getMonth() + 1);
+        const mesSelecionadoStr = mesParaStr(mesSelecionado.ano, mesSelecionado.mes);
+        const podePrev = primeiromes ? mesSelecionadoStr > primeiromes : false;
+        const podeNext = mesSelecionadoStr < mesAtualStr;
+        const prev = mesAnterior(mesSelecionado.ano, mesSelecionado.mes);
+        const next = mesPosterior(mesSelecionado.ano, mesSelecionado.mes);
+
+        return (
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-semibold">Receita Diária</CardTitle>
+              <div className="flex items-center gap-1">
+                <button
+                  className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  disabled={!podePrev}
+                  onClick={() => setMesSelecionado(prev)}
+                  aria-label="Mês anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-medium tabular-nums w-36 text-center">
+                  {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
+                </span>
+                <button
+                  className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  disabled={!podeNext}
+                  onClick={() => setMesSelecionado(next)}
+                  aria-label="Próximo mês"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingDiario ? (
+                <div className="h-[240px] flex items-center justify-center">
+                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : receitaDiaria.length === 0 ? (
+                <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">
+                  Sem dados para {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart
+                    data={receitaDiaria}
+                    margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="dashReceitaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis
+                      dataKey="dia"
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(dia: string) => dia.slice(8)}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={formatCurrencyShort}
+                      width={64}
+                    />
+                    <Tooltip
+                      formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
+                      labelFormatter={(dia) =>
+                        new Date(String(dia) + "T00:00:00").toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      }
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="receita"
+                      stroke="var(--color-primary)"
+                      fill="url(#dashReceitaGrad)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Status + Top categories */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -277,6 +371,52 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Atalho categorias */}
+      {topCategorias.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Top Categorias</CardTitle>
+            <button
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+              onClick={() => navigate("/categorias")}
+            >
+              Ver todas <ArrowRight className="h-3 w-3" />
+            </button>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {topCategorias.map((cat) => (
+              <div
+                key={cat.categoria}
+                className="rounded-lg overflow-hidden border cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all group"
+                onClick={() => navigate(`/categorias/${cat.categoria}`)}
+              >
+                <div className="relative h-20 bg-muted overflow-hidden">
+                  {cat.link_imagem ? (
+                    <img
+                      src={cat.link_imagem}
+                      alt={formatCategoria(cat.categoria)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <ImageOff className="h-6 w-6 opacity-30" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-xs font-medium line-clamp-1">{formatCategoria(cat.categoria)}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {formatCurrencyShort(cat.receita_total)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top products table */}
       <Card>

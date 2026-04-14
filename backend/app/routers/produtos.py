@@ -55,13 +55,17 @@ def listar_produtos(
 
 @router.get("/categorias", response_model=list[str], tags=["Produtos"])
 def listar_categorias(db: Session = Depends(get_db)):
-    resultados = (
-        db.query(Produto.categoria_produto)
-        .distinct()
-        .order_by(Produto.categoria_produto)
-        .all()
-    )
-    return [r[0] for r in resultados if r[0] and r[0].strip()]
+    de_produtos = {
+        r[0]
+        for r in db.query(Produto.categoria_produto).distinct().all()
+        if r[0] and r[0].strip()
+    }
+    de_imagens = {
+        r[0]
+        for r in db.query(CategoriaImagem.categoria).all()
+        if r[0] and r[0].strip()
+    }
+    return sorted(de_produtos | de_imagens)
 
 
 @router.get("/categoria-imagem/{categoria}", tags=["Produtos"])

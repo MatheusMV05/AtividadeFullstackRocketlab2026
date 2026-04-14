@@ -1,7 +1,11 @@
 import type {
   AvaliacaoResponse,
   AvaliacaoStats,
+  CategoriaDashboard,
+  CategoriaCreate,
+  CategoriaStats,
   DashboardStats,
+  ReceitaDiariaItem,
   HealthScore,
   Produto,
   ProdutoCreate,
@@ -98,7 +102,27 @@ export const api = {
     return request(`/produtos/${idProduto}/health-score`);
   },
 
+  // Categorias
+  getCategoriasStats(): Promise<CategoriaStats[]> {
+    return request("/categorias/stats");
+  },
+
+  getCategoriaDashboard(categoria: string): Promise<CategoriaDashboard> {
+    return request(`/categorias/${encodeURIComponent(categoria)}/dashboard`);
+  },
+
+  criarCategoria(data: CategoriaCreate): Promise<{ categoria: string; link_imagem: string }> {
+    return request("/categorias", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
   getDashboardStats(): Promise<DashboardStats> {
     return request("/dashboard/stats");
+  },
+
+  getDashboardReceitaDiaria(ano: number, mes: number): Promise<ReceitaDiariaItem[]> {
+    return request(`/dashboard/receita-diaria?ano=${ano}&mes=${mes}`);
   },
 };
