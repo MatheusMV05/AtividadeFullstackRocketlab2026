@@ -153,7 +153,7 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 
 | Recurso | Detalhes |
 |---|---|
-| **Tema Tailwind CSS v4** | Migração completa de Tailwind v3 para v4 com tema tweakcn (cores oklch, plugin `@tailwindcss/vite`, fontes Outfit/Merriweather/JetBrains Mono) |
+| **Design System (shadcn/ui)** | Arquitetura de componentes baseada no shadcn/ui, utilizando o tweakcn para customização exclusiva do tema.|
 | **Dark mode** | Toggle no menu lateral com persistência via `localStorage`; sem flash na inicialização |
 | **Menu lateral (Sidebar)** | Substitui a navbar superior; navegação entre Dashboard e Catálogo; toggle de tema na base |
 | **Dashboard analítico** | Página inicial com 4 KPI cards, gráfico de área com receita mensal histórica, dois gráficos de barras horizontais (pedidos por status + top categorias) e tabela dos top 10 produtos |
