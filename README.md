@@ -187,40 +187,62 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 .
 ├── backend/
 │   ├── app/
-│   │   ├── models/          # Modelos SQLAlchemy
-│   │   ├── routers/
-│   │   │   ├── produtos.py  # CRUD de produtos + listagem de categorias
-│   │   │   ├── categorias.py# Stats, dashboard e criação de categorias
-│   │   │   ├── dashboard.py # Métricas gerais, receita diária e stats por mês
-│   │   │   ├── avaliacoes.py
-│   │   │   ├── vendas.py
-│   │   │   └── health_score.py
-│   │   ├── schemas/
+│   │   ├── models/
+│   │   │   ├── avaliacao_pedido.py  # Avaliações dos pedidos
+│   │   │   ├── categoria_imagem.py  # Imagens por categoria (PK: slug)
+│   │   │   ├── consumidor.py
+│   │   │   ├── item_pedido.py
+│   │   │   ├── pedido.py
 │   │   │   ├── produto.py
-│   │   │   ├── categoria.py # CategoriaStatsItem, CategoriaDashboard, CategoriaCreate
-│   │   │   ├── dashboard.py # DashboardStats, DashboardMesStats, ReceitaDiariaItem
+│   │   │   └── vendedor.py
+│   │   ├── routers/
+│   │   │   ├── alertas.py           # Feed de alertas operacionais
+│   │   │   ├── avaliacoes.py        # Avaliações e stats por produto
+│   │   │   ├── categorias.py        # Stats, dashboard e criação de categorias
+│   │   │   ├── dashboard.py         # Métricas gerais, receita diária e stats por mês
+│   │   │   ├── health_score.py      # Score de saúde do produto (0–100)
+│   │   │   ├── produtos.py          # CRUD de produtos + listagem de categorias
+│   │   │   └── vendas.py            # Vendas, stats e timeline por produto
+│   │   ├── schemas/
+│   │   │   ├── alerta.py
 │   │   │   ├── avaliacao.py
+│   │   │   ├── categoria.py         # CategoriaStatsItem, CategoriaDashboard, CategoriaCreate
+│   │   │   ├── dashboard.py         # DashboardStats, DashboardMesStats, ReceitaDiariaItem
+│   │   │   ├── health_score.py
+│   │   │   ├── produto.py
 │   │   │   └── venda.py
-│   │   ├── config.py        # Configuração (DATABASE_URL)
-│   │   ├── database.py      # Engine + sessão
-│   │   └── main.py          # App FastAPI + CORS
-│   ├── alembic/             # Migrações do banco
+│   │   ├── config.py                # Configuração (DATABASE_URL)
+│   │   ├── database.py              # Engine + sessão SQLAlchemy
+│   │   └── main.py                  # App FastAPI + CORS + registro de routers
+│   ├── alembic/                     # Migrações do banco
+│   ├── DatabaseCsvs/                # CSVs de seed (produtos, pedidos, avaliações…)
+│   ├── seed.py                      # Script de carga inicial do banco
 │   ├── requirements.txt
 │   └── .env.example
 └── frontend/
     ├── src/
-    │   ├── components/ui/   # Componentes shadcn/ui
-    │   ├── hooks/           # useToast
-    │   ├── lib/             # api.ts, utils.ts
+    │   ├── components/
+    │   │   ├── ui/                  # Componentes shadcn/ui (button, card, dialog…)
+    │   │   ├── AlertasFeed.tsx      # Feed lateral de alertas operacionais
+    │   │   ├── HealthScoreRing.tsx  # Anel SVG animado de health score
+    │   │   ├── Sidebar.tsx          # Menu lateral com navegação e toggle de tema
+    │   │   └── ThemeToggle.tsx      # Botão dark/light mode
+    │   ├── hooks/
+    │   │   └── use-toast.ts
+    │   ├── lib/
+    │   │   ├── api.ts               # Todas as chamadas à API (fetch + tipagens)
+    │   │   └── utils.ts             # formatCategoria, formatNomeProduto, getCategoriaColor
     │   ├── pages/
-    │   │   ├── DashboardPage.tsx       # Dashboard com seletor de mês e histórico anual
-    │   │   ├── CatalogPage.tsx         # Catálogo paginado com busca e filtros
-    │   │   ├── CategoriasPage.tsx      # Grid de categorias com KPIs e criação
+    │   │   ├── CatalogPage.tsx         # Catálogo paginado com busca, filtros, grade/tabela
     │   │   ├── CategoriaDetailPage.tsx # Dashboard individual por categoria
-    │   │   ├── ProductDetailPage.tsx
-    │   │   └── ProductFormPage.tsx
-    │   ├── types/           # Tipagens TypeScript
-    │   ├── App.tsx
+    │   │   ├── CategoriasPage.tsx      # Grid de categorias com KPIs e criação
+    │   │   ├── DashboardPage.tsx       # Dashboard com seletor de mês e histórico anual
+    │   │   ├── ProductDetailPage.tsx   # Detalhe do produto com tabs e health score
+    │   │   └── ProductFormPage.tsx     # Formulário de criação/edição de produto
+    │   ├── types/
+    │   │   └── index.ts             # Todas as interfaces TypeScript da aplicação
+    │   ├── App.tsx                  # Roteamento SPA (React Router)
+    │   ├── index.css                # Tema Tailwind v4 (variáveis oklch)
     │   └── main.tsx
     ├── package.json
     └── .env.example
