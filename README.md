@@ -223,7 +223,6 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
     ├── src/
     │   ├── components/
     │   │   ├── ui/                  # Componentes shadcn/ui (button, card, dialog…)
-    │   │   ├── AlertasFeed.tsx      # Feed lateral de alertas operacionais
     │   │   ├── HealthScoreRing.tsx  # Anel SVG animado de health score
     │   │   ├── Sidebar.tsx          # Menu lateral com navegação e toggle de tema
     │   │   └── ThemeToggle.tsx      # Botão dark/light mode
