@@ -31,6 +31,11 @@ class ProdutoTopItem(BaseModel):
     receita: float
 
 
+class DashboardMesStats(BaseModel):
+    pedidos_por_status: list[StatusItem]
+    top_categorias: list[CategoriaStatItem]
+
+
 class DashboardStats(BaseModel):
     total_produtos: int
     total_pedidos: int

@@ -16,16 +16,19 @@ import {
   Area,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
 import { api } from "@/lib/api";
 import { formatCategoria, formatNomeProduto } from "@/lib/utils";
-import type { CategoriaStats, DashboardStats, ReceitaDiariaItem } from "@/types";
+import type { CategoriaStats, DashboardMesStats, DashboardStats, ReceitaDiariaItem } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function formatCurrency(value: number) {
@@ -200,10 +203,17 @@ export default function DashboardPage() {
   );
   const [receitaDiaria, setReceitaDiaria] = useState<ReceitaDiariaItem[]>([]);
   const [loadingDiario, setLoadingDiario] = useState(false);
+  const [statsMes, setStatsMes] = useState<DashboardMesStats | null>(null);
+  const [anosHistoricoSelecionados, setAnosHistoricoSelecionados] = useState<number[]>([]);
 
   useEffect(() => {
     api.getDashboardStats()
-      .then(setStats)
+      .then((s) => {
+        setStats(s);
+        // Inicializa todos os anos disponíveis como selecionados
+        const anos = [...new Set(s.receita_por_mes.map((r) => Number(r.mes.slice(0, 4))))].sort();
+        setAnosHistoricoSelecionados(anos);
+      })
       .finally(() => setLoading(false));
     api.getCategoriasStats().then((cats) =>
       setTopCategorias(
@@ -215,10 +225,14 @@ export default function DashboardPage() {
   useEffect(() => {
     _mesSelecionado = mesSelecionado;
     setLoadingDiario(true);
-    api
-      .getDashboardReceitaDiaria(mesSelecionado.ano, mesSelecionado.mes)
-      .then(setReceitaDiaria)
-      .finally(() => setLoadingDiario(false));
+    setStatsMes(null);
+    Promise.all([
+      api.getDashboardReceitaDiaria(mesSelecionado.ano, mesSelecionado.mes),
+      api.getDashboardStatsMes(mesSelecionado.ano, mesSelecionado.mes),
+    ]).then(([diario, mes]) => {
+      setReceitaDiaria(diario);
+      setStatsMes(mes);
+    }).finally(() => setLoadingDiario(false));
   }, [mesSelecionado]);
 
   if (loading) {
@@ -416,83 +430,170 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Status + Top categories */}
+      {/* Status + Top categories — filtrados pelo mês selecionado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Orders by status */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Pedidos por Status</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              Pedidos por Status — {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={stats.pedidos_por_status}
-                layout="vertical"
-                margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis
-                  type="category"
-                  dataKey="status"
-                  tick={{ fontSize: 10 }}
-                  width={110}
-                />
-                <Tooltip
-                  formatter={(value) => [Number(value).toLocaleString("pt-BR"), "Pedidos"]}
-                />
-                <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                  {stats.pedidos_por_status.map((entry) => (
-                    <Cell
-                      key={entry.status}
-                      fill={STATUS_COLORS[entry.status] ?? "#64748b"}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {!statsMes || loadingDiario ? (
+              <div className="h-[220px] flex items-center justify-center">
+                <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : statsMes.pedidos_por_status.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                Sem pedidos neste mês
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={statsMes.pedidos_por_status}
+                  layout="vertical"
+                  margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="status" tick={{ fontSize: 10 }} width={110} />
+                  <Tooltip formatter={(value) => [Number(value).toLocaleString("pt-BR"), "Pedidos"]} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
+                    {statsMes.pedidos_por_status.map((entry) => (
+                      <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? "#64748b"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        {/* Top categories */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Top Categorias por Receita</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              Top Categorias — {MESES_PT[mesSelecionado.mes - 1]} {mesSelecionado.ano}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={stats.top_categorias}
-                layout="vertical"
-                margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={formatCurrencyShort}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="categoria"
-                  tick={{ fontSize: 10 }}
-                  width={110}
-                  tickFormatter={formatCategoria}
-                />
-                <Tooltip
-                  formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
-                  labelFormatter={(label) => formatCategoria(String(label ?? ""))}
-                />
-                <Bar dataKey="receita" radius={[0, 4, 4, 0]}>
-                  {stats.top_categorias.map((entry, i) => (
-                    <Cell key={entry.categoria} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {!statsMes || loadingDiario ? (
+              <div className="h-[220px] flex items-center justify-center">
+                <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : statsMes.top_categorias.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                Sem vendas neste mês
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={statsMes.top_categorias}
+                  layout="vertical"
+                  margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} />
+                  <YAxis type="category" dataKey="categoria" tick={{ fontSize: 10 }} width={110} tickFormatter={formatCategoria} />
+                  <Tooltip
+                    formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
+                    labelFormatter={(label) => formatCategoria(String(label ?? ""))}
+                  />
+                  <Bar dataKey="receita" radius={[0, 4, 4, 0]}>
+                    {statsMes.top_categorias.map((entry, i) => (
+                      <Cell key={entry.categoria} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Histórico anual — comparativo multi-ano */}
+      {stats.receita_por_mes.length > 0 && (() => {
+        const anosDisponiveis = [...new Set(
+          stats.receita_por_mes.map((r) => Number(r.mes.slice(0, 4)))
+        )].sort();
+
+        // Transforma em [{mesNum, label, "2023": val, "2024": val, ...}]
+        const porMes: Record<number, Record<string, number>> = {};
+        for (let m = 1; m <= 12; m++) porMes[m] = {};
+        for (const item of stats.receita_por_mes) {
+          const ano = Number(item.mes.slice(0, 4));
+          const mes = Number(item.mes.slice(5, 7));
+          if (anosHistoricoSelecionados.includes(ano)) {
+            porMes[mes][String(ano)] = (porMes[mes][String(ano)] ?? 0) + item.receita;
+          }
+        }
+        const historicoData = Array.from({ length: 12 }, (_, i) => ({
+          mesNum: i + 1,
+          label: MESES_CURTO[i],
+          ...porMes[i + 1],
+        }));
+
+        const coresAnos = ["#3b82f6", "#f97316", "#22c55e", "#8b5cf6", "#ec4899", "#f59e0b"];
+
+        function toggleAno(ano: number) {
+          setAnosHistoricoSelecionados((prev) =>
+            prev.includes(ano)
+              ? prev.length > 1 ? prev.filter((a) => a !== ano) : prev
+              : [...prev, ano].sort()
+          );
+        }
+
+        return (
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-sm font-semibold">Histórico de Receita por Ano</CardTitle>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {anosDisponiveis.map((ano, i) => {
+                  const ativo = anosHistoricoSelecionados.includes(ano);
+                  return (
+                    <button
+                      key={ano}
+                      onClick={() => toggleAno(ano)}
+                      className={[
+                        "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                        ativo
+                          ? "text-white border-transparent"
+                          : "bg-transparent text-muted-foreground border-border hover:border-foreground",
+                      ].join(" ")}
+                      style={ativo ? { backgroundColor: coresAnos[i % coresAnos.length], borderColor: coresAnos[i % coresAnos.length] } : {}}
+                    >
+                      {ano}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={historicoData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} width={64} />
+                  <Tooltip
+                    formatter={(value, name) => [formatCurrency(Number(value)), String(name)]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {anosHistoricoSelecionados.map((ano, i) => (
+                    <Line
+                      key={ano}
+                      type="monotone"
+                      dataKey={String(ano)}
+                      stroke={coresAnos[anosDisponiveis.indexOf(ano) % coresAnos.length]}
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Atalho categorias */}
       {topCategorias.length > 0 && (

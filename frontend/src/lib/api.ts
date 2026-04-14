@@ -4,6 +4,7 @@ import type {
   CategoriaDashboard,
   CategoriaCreate,
   CategoriaStats,
+  DashboardMesStats,
   DashboardStats,
   ReceitaDiariaItem,
   HealthScore,
@@ -124,5 +125,9 @@ export const api = {
 
   getDashboardReceitaDiaria(ano: number, mes: number): Promise<ReceitaDiariaItem[]> {
     return request(`/dashboard/receita-diaria?ano=${ano}&mes=${mes}`);
+  },
+
+  getDashboardStatsMes(ano: number, mes: number): Promise<DashboardMesStats> {
+    return request(`/dashboard/stats-mes?ano=${ano}&mes=${mes}`);
   },
 };

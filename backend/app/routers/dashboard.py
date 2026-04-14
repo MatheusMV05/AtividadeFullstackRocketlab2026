@@ -9,6 +9,7 @@ from app.models.pedido import Pedido
 from app.models.produto import Produto
 from app.schemas.dashboard import (
     CategoriaStatItem,
+    DashboardMesStats,
     DashboardStats,
     ProdutoTopItem,
     ReceitaDiariaItem,
@@ -53,6 +54,63 @@ def get_receita_diaria(
         )
         for r in rows
     ]
+
+
+@router.get("/stats-mes", response_model=DashboardMesStats)
+def get_stats_mes(
+    ano: int = Query(..., ge=2000, le=2100),
+    mes: int = Query(..., ge=1, le=12),
+    db: Session = Depends(get_db),
+):
+    mes_str = f"{mes:02d}"
+    ano_str = str(ano)
+    filtro_mes = [
+        Pedido.pedido_compra_timestamp.isnot(None),
+        func.strftime("%Y", Pedido.pedido_compra_timestamp) == ano_str,
+        func.strftime("%m", Pedido.pedido_compra_timestamp) == mes_str,
+    ]
+
+    pedidos_por_status_rows = (
+        db.query(Pedido.status, func.count(Pedido.id_pedido).label("total"))
+        .filter(*filtro_mes)
+        .group_by(Pedido.status)
+        .order_by(func.count(Pedido.id_pedido).desc())
+        .all()
+    )
+
+    top_categorias_rows = (
+        db.query(
+            Produto.categoria_produto,
+            func.sum(ItemPedido.preco_BRL).label("receita"),
+            func.count(ItemPedido.id_pedido).label("total_vendas"),
+        )
+        .join(ItemPedido, ItemPedido.id_produto == Produto.id_produto)
+        .join(Pedido, Pedido.id_pedido == ItemPedido.id_pedido)
+        .filter(
+            Produto.categoria_produto.isnot(None),
+            func.trim(Produto.categoria_produto) != "",
+            *filtro_mes,
+        )
+        .group_by(Produto.categoria_produto)
+        .order_by(func.sum(ItemPedido.preco_BRL).desc())
+        .limit(10)
+        .all()
+    )
+
+    return DashboardMesStats(
+        pedidos_por_status=[
+            StatusItem(status=r.status, total=r.total)
+            for r in pedidos_por_status_rows
+        ],
+        top_categorias=[
+            CategoriaStatItem(
+                categoria=r.categoria_produto,
+                receita=round(r.receita or 0, 2),
+                total_vendas=r.total_vendas,
+            )
+            for r in top_categorias_rows
+        ],
+    )
 
 
 @router.get("/stats", response_model=DashboardStats)

@@ -138,6 +138,11 @@ export interface CategoriaCreate {
   link_imagem: string;
 }
 
+export interface DashboardMesStats {
+  pedidos_por_status: StatusItem[];
+  top_categorias: CategoriaStatItem[];
+}
+
 export interface DashboardStats {
   total_produtos: number;
   total_pedidos: number;
