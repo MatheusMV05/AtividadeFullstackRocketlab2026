@@ -112,7 +112,7 @@ O frontend estará disponível em `http://localhost:5173`.
 | Método | Endpoint | Descrição |
 |---|---|---|
 | `GET` | `/produtos` | Lista produtos (paginação, busca, filtro) |
-| `GET` | `/produtos/categorias` | Lista categorias disponíveis |
+| `GET` | `/produtos/categorias` | Lista todas as categorias (produtos + categoria_imagens) |
 | `GET` | `/produtos/{id}` | Detalhes de um produto |
 | `POST` | `/produtos` | Cria um produto |
 | `PATCH` | `/produtos/{id}` | Atualiza um produto |
@@ -123,11 +123,16 @@ O frontend estará disponível em `http://localhost:5173`.
 | `GET` | `/produtos/{id}/vendas/stats` | Estatísticas de vendas |
 | `GET` | `/produtos/{id}/vendas/timeline` | Série temporal diária de vendas (query param `days`, 1–3650) ⭐ |
 | `GET` | `/produtos/{id}/health-score` | Score de saúde do produto (0–100) ⭐ |
+| `GET` | `/categorias/stats` | KPIs agregados por categoria (produtos, receita, vendas, avaliação, imagem) ⭐ |
+| `GET` | `/categorias/{slug}/dashboard` | Dashboard completo de uma categoria (KPIs + top produtos + receita mensal) ⭐ |
+| `POST` | `/categorias` | Cria nova categoria com imagem (retorna 409 se já existir) ⭐ |
 | `GET` | `/dashboard/stats` | Métricas gerais do e-commerce (KPIs, receita mensal, status, top categorias/produtos) ⭐ |
+| `GET` | `/dashboard/receita-diaria` | Receita diária de um mês (query params `ano`, `mes`) ⭐ |
+| `GET` | `/dashboard/stats-mes` | Pedidos por status e top categorias filtrados por mês (query params `ano`, `mes`) ⭐ |
 
 ---
 
-## Extras implementados
+## Extras implementados ⭐
 
 Funcionalidades adicionadas além dos requisitos originais da atividade.
 
@@ -138,6 +143,11 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | **Health Score** (`GET /produtos/{id}/health-score`) | Pontuação de 0 a 100 calculada a partir de três componentes: média de avaliações (até 50 pts), volume de vendas nos últimos 30 dias (até 30 pts) e taxa de não-cancelamento (até 20 pts) |
 | **Timeline de vendas** (`GET /produtos/{id}/vendas/timeline?days=N`) | Série temporal diária de quantidade e receita para os últimos N dias (1 a 3650), usando `func.date()` do SQLite — cobre todo o histórico desde 2018 |
 | **Dashboard de métricas** (`GET /dashboard/stats`) | Endpoint agregado com: totais de produtos, pedidos, clientes e receita; receita por mês (todos os anos); pedidos por status; top 10 categorias por receita; top 10 produtos por receita |
+| **Receita diária** (`GET /dashboard/receita-diaria?ano&mes`) | Série temporal diária de receita e contagem de pedidos para o mês especificado, via `strftime` no SQLite |
+| **Stats por mês** (`GET /dashboard/stats-mes?ano&mes`) | Pedidos agrupados por status e top 10 categorias por receita filtrados pelo mês/ano selecionado |
+| **KPIs de categorias** (`GET /categorias/stats`) | Para cada categoria: total de produtos, receita, vendas, média de avaliações e URL da imagem; inclui categorias sem produtos ainda cadastrados |
+| **Dashboard de categoria** (`GET /categorias/{slug}/dashboard`) | Métricas completas de uma categoria: KPIs, ticket médio, top 10 produtos por receita e receita mensal histórica |
+| **Criar categoria** (`POST /categorias`) | Insere nova entrada em `categoria_imagens` com nome (slug) e URL de imagem sem limite de tamanho; retorna 409 em duplicata |
 
 ### Frontend
 
@@ -160,6 +170,14 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 | **Botão de salvar animado** | Três estados com `AnimatePresence`: ícone de salvar → spinner giratório → ícone de check (verde), seguido de redirecionamento automático |
 | **Empty states acionáveis** | Telas vazias de avaliações e vendas incluem botões de ação contextuais (ex.: "Editar Produto", "Ver Catálogo") |
 | **Numerais tabulares** | Classe `tabular-nums` em todos os valores numéricos (KPIs, tabelas de vendas) para alinhamento visual consistente |
+| **Página de Categorias** (`/categorias`) | Grid visual de todas as categorias com banner de imagem, 4 KPIs por card (produtos, vendas, receita, avaliação média), badges de ranking (Trophy/Medal/Award) para o top 3, busca por nome e ordenação por receita, avaliação, produtos ou vendas |
+| **Detalhe de Categoria** (`/categorias/:slug`) | Dashboard individual por categoria: banner com imagem, KPI cards, ticket médio, gráfico de área com receita mensal e tabela dos top 10 produtos com link direto ao detalhe |
+| **Criar Categoria** | Dialog acessível pelo botão "Nova Categoria" na página de categorias; campo de nome (convertido automaticamente para slug), URL de imagem sem restrição de formato/tamanho e preview ao vivo — submit liberado mesmo que o preview não carregue (hotlink/CORS) |
+| **Gráfico de Receita Diária** | Substitui o gráfico mensal do dashboard por uma visão diária do mês selecionado; eixo X exibe o dia, tooltip com data completa por extenso e spinner durante a troca de mês |
+| **Seletor de Mês/Ano** | Componente `MonthPicker` no card de receita diária: botão trigger `Mês Ano ▼` abre dropdown com navegação por ano (`< 2023 >`) e grade 4×3 dos 12 meses; meses com dados marcados com ponto indicador; meses futuros desabilitados; setas `‹ ›` laterais para navegação rápida; seleção persiste durante a navegação SPA e reseta no reload |
+| **Charts filtrados por mês** | "Pedidos por Status" e "Top Categorias por Receita" seguem o mês selecionado no gráfico de receita diária, com título contextual, spinner e empty state individuais |
+| **Histórico Anual Comparativo** | Seção abaixo dos charts mensais com `LineChart` multi-série (uma linha por ano); botões de toggle coloridos por ano (cor do botão = cor da linha); mínimo de 1 ano sempre ativo; dados derivados de `receita_por_mes` sem request adicional |
+| **Atalho de Categorias no Dashboard** | Card "Top Categorias" com os 4 departamentos de maior receita exibidos como mini cards com imagem e receita; link "Ver todas" navega para `/categorias` |
 
 ---
 
@@ -170,8 +188,19 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
 ├── backend/
 │   ├── app/
 │   │   ├── models/          # Modelos SQLAlchemy
-│   │   ├── routers/         # Routers FastAPI (produtos, avaliacoes, vendas)
-│   │   ├── schemas/         # Schemas Pydantic
+│   │   ├── routers/
+│   │   │   ├── produtos.py  # CRUD de produtos + listagem de categorias
+│   │   │   ├── categorias.py# Stats, dashboard e criação de categorias
+│   │   │   ├── dashboard.py # Métricas gerais, receita diária e stats por mês
+│   │   │   ├── avaliacoes.py
+│   │   │   ├── vendas.py
+│   │   │   └── health_score.py
+│   │   ├── schemas/
+│   │   │   ├── produto.py
+│   │   │   ├── categoria.py # CategoriaStatsItem, CategoriaDashboard, CategoriaCreate
+│   │   │   ├── dashboard.py # DashboardStats, DashboardMesStats, ReceitaDiariaItem
+│   │   │   ├── avaliacao.py
+│   │   │   └── venda.py
 │   │   ├── config.py        # Configuração (DATABASE_URL)
 │   │   ├── database.py      # Engine + sessão
 │   │   └── main.py          # App FastAPI + CORS
@@ -183,7 +212,13 @@ Funcionalidades adicionadas além dos requisitos originais da atividade.
     │   ├── components/ui/   # Componentes shadcn/ui
     │   ├── hooks/           # useToast
     │   ├── lib/             # api.ts, utils.ts
-    │   ├── pages/           # CatalogPage, ProductDetailPage, ProductFormPage
+    │   ├── pages/
+    │   │   ├── DashboardPage.tsx       # Dashboard com seletor de mês e histórico anual
+    │   │   ├── CatalogPage.tsx         # Catálogo paginado com busca e filtros
+    │   │   ├── CategoriasPage.tsx      # Grid de categorias com KPIs e criação
+    │   │   ├── CategoriaDetailPage.tsx # Dashboard individual por categoria
+    │   │   ├── ProductDetailPage.tsx
+    │   │   └── ProductFormPage.tsx
     │   ├── types/           # Tipagens TypeScript
     │   ├── App.tsx
     │   └── main.tsx
